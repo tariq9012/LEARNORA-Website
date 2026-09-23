@@ -1,0 +1,44 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+.output
+.vinxi
+.tanstack/**
+.nitro
+*.local
+
+# Wrangler / Cloudflare
+.wrangler/
+.dev.vars
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment variables (never commit real secrets)
+.env
+.env.*
+!.env.example
+
+# Generated Prisma client (regenerate with `npm run db:generate`)
+src/generated/
+
+# Phase 7: local media uploads — never commit user-uploaded files.
+/storage/uploads/
+!/storage/uploads/.gitkeep

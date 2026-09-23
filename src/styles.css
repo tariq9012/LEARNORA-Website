@@ -1,0 +1,148 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+/*
+ * Learnora design system — "Nocturnal Studio".
+ * Dark ink ground, indigo brand, gold rating accent.
+ * Fraunces (display) / Space Grotesk (sans) / JetBrains Mono (mono).
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Direction tokens */
+  --color-ink: var(--ink);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-cream: var(--cream);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-gold: var(--gold);
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+
+  --font-display: "Fraunces", Georgia, serif;
+  --font-sans: "Space Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --ease-studio: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root {
+  --radius: 0.75rem;
+
+  --ink: hsl(248 35% 6%);
+  --panel: hsl(250 30% 10%);
+  --panel-2: hsl(252 28% 13%);
+  --cream: hsl(250 30% 93%);
+  --line: hsl(250 25% 93% / 0.08);
+  --brand: hsl(258 78% 66%);
+  --brand-soft: hsl(258 70% 76%);
+  --gold: hsl(40 80% 72%);
+  --good: hsl(158 55% 55%);
+  --warn: hsl(35 85% 62%);
+
+  --background: var(--ink);
+  --foreground: var(--cream);
+  --card: var(--panel);
+  --card-foreground: var(--cream);
+  --popover: var(--panel-2);
+  --popover-foreground: var(--cream);
+  --primary: var(--brand);
+  --primary-foreground: hsl(248 35% 6%);
+  --secondary: var(--panel-2);
+  --secondary-foreground: var(--cream);
+  --muted: var(--panel-2);
+  --muted-foreground: hsl(250 20% 72%);
+  --accent: var(--panel-2);
+  --accent-foreground: var(--cream);
+  --destructive: hsl(0 70% 62%);
+  --destructive-foreground: hsl(248 35% 6%);
+  --border: var(--line);
+  --input: hsl(250 25% 93% / 0.12);
+  --ring: hsl(258 78% 66% / 0.5);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility glow {
+  background:
+    radial-gradient(620px 420px at 78% -8%, hsl(258 78% 66% / 0.22), transparent 60%),
+    radial-gradient(560px 460px at 12% 14%, hsl(265 70% 58% / 0.16), transparent 62%),
+    radial-gradient(420px 320px at 92% 92%, hsl(250 70% 60% / 0.1), transparent 60%);
+}
+
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  color: var(--brand-soft);
+}
+
+@utility animate-rise {
+  animation: rise 0.5s var(--ease-studio) both;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+}

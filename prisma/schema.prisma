@@ -1,0 +1,741 @@
+// Learnora — production database schema
+//
+// This is the backend/database foundation for the LMS (Phase 2). It is not
+// yet wired up to the frontend, which still runs on src/data/mock.ts until
+// a later migration phase.
+//
+// Prisma ORM 7 moved connection configuration out of this file and into
+// prisma.config.ts at the project root (see that file for DATABASE_URL /
+// DIRECT_URL wiring). Run `npm run db:generate` after changing this file,
+// and `npm run db:migrate` to create/apply a migration.
+
+generator client {
+  // Rust-free client + engine: no native/Rust binary to download at
+  // generate-time, smaller bundle, and requires a driver adapter (see
+  // src/server/db/client.ts) instead of a `url` below.
+  provider   = "prisma-client"
+  output     = "../src/generated/prisma"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  STUDENT
+  INSTRUCTOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum InstructorApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum CategoryStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum CourseStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  REJECTED
+  ARCHIVED
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  ALL_LEVELS
+}
+
+enum LessonType {
+  VIDEO
+  ARTICLE
+  QUIZ
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+}
+
+enum RefundStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  PROCESSED
+}
+
+enum NotificationType {
+  ENROLLMENT
+  COURSE_APPROVED
+  COURSE_REJECTED
+  NEW_REVIEW
+  NEW_MESSAGE
+  PAYOUT
+  SYSTEM
+  ANNOUNCEMENT
+}
+
+enum ReportTargetType {
+  COURSE
+  USER
+  REVIEW
+  MESSAGE
+}
+
+enum ReportStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+enum AssetPurpose {
+  COURSE_THUMBNAIL
+  COURSE_PREVIEW
+  LESSON_VIDEO
+  LESSON_RESOURCE
+}
+
+enum StorageProviderKind {
+  LOCAL
+}
+
+// ---------------------------------------------------------------------------
+// Users
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String     @id @default(cuid())
+  name          String
+  email         String     @unique
+  passwordHash  String
+  avatar        String?
+  role          UserRole   @default(STUDENT)
+  status        UserStatus @default(ACTIVE)
+  emailVerified Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  studentProfile    StudentProfile?
+  instructorProfile InstructorProfile?
+
+  coursesInstructed   Course[]                   @relation("InstructorCourses")
+  coursesReviewed     Course[]                   @relation("CourseReviewedBy")
+  enrollments         Enrollment[]
+  reviews             Review[]
+  wishlist            Wishlist[]
+  orders              Order[]
+  certificates        Certificate[]
+  notifications       Notification[]
+  conversations       ConversationParticipant[]
+  sentMessages        Message[]                  @relation("MessageSender")
+  earnings            InstructorEarning[]
+  payouts             Payout[]
+  reportsFiled        Report[]                   @relation("ReportsFiled")
+  reportsResolved     Report[]                   @relation("ReportsResolved")
+  refundsRequested    Refund[]                   @relation("RefundsRequested")
+  refundsProcessed    Refund[]                   @relation("RefundsProcessed")
+  sessions            Session[]
+  passwordResetTokens PasswordResetToken[]
+  assets              Asset[]                    @relation("AssetOwner")
+
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+model StudentProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio               String?
+  headline          String?
+  interests         String[]
+  learningGoals     String?
+  preferredLanguage String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("student_profiles")
+}
+
+model InstructorProfile {
+  id              String                   @id @default(cuid())
+  userId          String                   @unique
+  user            User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headline        String?
+  bio             String?
+  expertise       String[]
+  yearsExperience Int?
+  website         String?
+  socialLinks     Json?
+  approvalStatus  InstructorApprovalStatus @default(PENDING)
+  rejectionReason String?
+  approvedAt      DateTime?
+  // Denormalized aggregates, recomputed by the application from Review /
+  // Enrollment rather than maintained by hand.
+  averageRating   Decimal?                 @db.Decimal(3, 2)
+  totalStudents   Int                      @default(0)
+  totalCourses    Int                      @default(0)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  @@index([approvalStatus])
+  @@map("instructor_profiles")
+}
+
+// ---------------------------------------------------------------------------
+// Categories
+// ---------------------------------------------------------------------------
+
+model Category {
+  id          String         @id @default(cuid())
+  name        String
+  slug        String         @unique
+  description String?
+  icon        String?
+  image       String?
+  status      CategoryStatus @default(ACTIVE)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  courses Course[]
+
+  @@index([status])
+  @@map("categories")
+}
+
+// ---------------------------------------------------------------------------
+// Media assets (Phase 7)
+// ---------------------------------------------------------------------------
+
+// Metadata/reference only — the binary itself lives in whatever
+// `storageProvider` + `storageKey` point at (local disk in development;
+// object storage in production). Never store file bytes in Postgres.
+model Asset {
+  id               String              @id @default(cuid())
+  ownerId          String
+  owner            User                @relation("AssetOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  storageProvider  StorageProviderKind @default(LOCAL)
+  // Server-generated, e.g. "courses/<id>/thumbnail/<uuid>.jpg" — never a
+  // client-supplied path. See src/server/media/media-keys.ts.
+  storageKey       String              @unique
+  originalFilename String
+  mimeType         String
+  sizeBytes        Int
+  purpose          AssetPurpose
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  courseThumbnailOf Course?          @relation("CourseThumbnailAsset")
+  coursePreviewOf   Course?          @relation("CoursePreviewAsset")
+  lessonVideoOf     Lesson?          @relation("LessonVideoAsset")
+  lessonResources   LessonResource[]
+
+  @@index([ownerId])
+  @@index([purpose])
+  @@map("assets")
+}
+
+// Multiple resources (PDF/ZIP/DOC/etc.) can be attached to one lesson.
+model LessonResource {
+  id        String   @id @default(cuid())
+  lessonId  String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  assetId   String   @unique
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  title     String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([lessonId])
+  @@map("lesson_resources")
+}
+
+// ---------------------------------------------------------------------------
+// Courses
+// ---------------------------------------------------------------------------
+
+model Course {
+  id               String       @id @default(cuid())
+  title            String
+  slug             String       @unique
+  subtitle         String?
+  description      String?
+  // Legacy URL fields from the Phase 6 "paste a URL" flow. New uploads use
+  // thumbnailAsset/previewAsset below; DTOs fall back to these only when no
+  // Asset is set yet, so old seeded/published courses keep working. See
+  // src/server/services/media-service.ts.
+  thumbnail        String?
+  previewVideo     String?
+  thumbnailAssetId String?      @unique
+  thumbnailAsset   Asset?       @relation("CourseThumbnailAsset", fields: [thumbnailAssetId], references: [id], onDelete: SetNull)
+  previewAssetId   String?      @unique
+  previewAsset     Asset?       @relation("CoursePreviewAsset", fields: [previewAssetId], references: [id], onDelete: SetNull)
+  instructorId     String
+  instructor       User         @relation("InstructorCourses", fields: [instructorId], references: [id], onDelete: Restrict)
+  categoryId       String
+  category         Category     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  level            CourseLevel  @default(ALL_LEVELS)
+  language         String       @default("English")
+  price            Decimal      @db.Decimal(10, 2)
+  discountPrice    Decimal?     @db.Decimal(10, 2)
+  status           CourseStatus @default(DRAFT)
+  rejectionReason  String?
+  // Course review workflow — set when the instructor submits, and when an
+  // admin decides. reviewedById is a relation (not a plain name) so we
+  // always have a real, safe-to-join identity for "who reviewed this".
+  submittedAt      DateTime?
+  reviewedAt       DateTime?
+  reviewedById     String?
+  reviewedBy       User?        @relation("CourseReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  featured         Boolean      @default(false)
+  requirements     String[]
+  learningOutcomes String[]
+  targetAudience   String[]
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  publishedAt      DateTime?
+
+  sections     CourseSection[]
+  enrollments  Enrollment[]
+  reviews      Review[]
+  wishlistedBy Wishlist[]
+  orderItems   OrderItem[]
+  certificates Certificate[]
+
+  @@index([instructorId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([featured])
+  @@map("courses")
+}
+
+model CourseSection {
+  id          String  @id @default(cuid())
+  courseId    String
+  course      Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  position    Int
+
+  lessons Lesson[]
+
+  @@unique([courseId, position])
+  @@index([courseId])
+  @@map("course_sections")
+}
+
+model Lesson {
+  id          String        @id @default(cuid())
+  sectionId   String
+  section     CourseSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  type        LessonType    @default(VIDEO)
+  // Legacy URL field from the Phase 6 "paste a URL" flow — see the note on
+  // Course.thumbnail above. New VIDEO lessons use videoAsset instead.
+  videoUrl    String?
+  content     String?
+  // Duration in seconds.
+  duration    Int?
+  position    Int
+  isPreview   Boolean       @default(false)
+
+  videoAssetId String?          @unique
+  videoAsset   Asset?           @relation("LessonVideoAsset", fields: [videoAssetId], references: [id], onDelete: SetNull)
+  resources    LessonResource[]
+  progress     LessonProgress[]
+
+  @@unique([sectionId, position])
+  @@index([sectionId])
+  @@map("lessons")
+}
+
+// ---------------------------------------------------------------------------
+// Enrollments & progress
+// ---------------------------------------------------------------------------
+
+model Enrollment {
+  id             String           @id @default(cuid())
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId       String
+  course         Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  status         EnrollmentStatus @default(ACTIVE)
+  enrolledAt     DateTime         @default(now())
+  completedAt    DateTime?
+  // Updated whenever the student opens the learning route or a lesson —
+  // drives a real "continue learning" ordering instead of insertion order.
+  lastAccessedAt DateTime?
+
+  lessonProgress LessonProgress[]
+
+  // A student can only enroll in a given course once.
+  @@unique([userId, courseId])
+  @@index([courseId])
+  @@map("enrollments")
+}
+
+model LessonProgress {
+  id              String     @id @default(cuid())
+  enrollmentId    String
+  enrollment      Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lessonId        String
+  lesson          Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completed       Boolean    @default(false)
+  // 0-100, maintained by the application.
+  progressPercent Int        @default(0)
+  watchedSeconds  Int        @default(0)
+  completedAt     DateTime?
+  updatedAt       DateTime   @updatedAt
+
+  // One progress record per lesson per enrollment.
+  @@unique([enrollmentId, lessonId])
+  @@index([lessonId])
+  @@map("lesson_progress")
+}
+
+// ---------------------------------------------------------------------------
+// Reviews & wishlist
+// ---------------------------------------------------------------------------
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  // 1-5, validated at the application layer.
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // One review per student per course.
+  @@unique([userId, courseId])
+  @@index([courseId])
+  @@map("reviews")
+}
+
+model Wishlist {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+  @@map("wishlists")
+}
+
+// ---------------------------------------------------------------------------
+// Orders & payments
+// ---------------------------------------------------------------------------
+
+model Order {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  // Safe public reference (e.g. LRN-ORD-XXXXXXXXXX) — never the internal
+  // cuid — shown to the student and used on the success page URL.
+  orderNumber String        @unique
+  amount      Decimal       @db.Decimal(10, 2)
+  currency    String        @default("USD")
+  status      PaymentStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  items    OrderItem[]
+  payments Payment[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  price     Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+
+  earning InstructorEarning?
+
+  // A course can only appear once per order.
+  @@unique([orderId, courseId])
+  @@index([courseId])
+  @@map("order_items")
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String
+  order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount            Decimal       @db.Decimal(10, 2)
+  currency          String        @default("USD")
+  status            PaymentStatus @default(PENDING)
+  provider          String
+  externalReference String?       @unique
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  refunds Refund[]
+
+  @@index([orderId])
+  @@index([status])
+  @@map("payments")
+}
+
+model Refund {
+  id            String       @id @default(cuid())
+  paymentId     String
+  payment       Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  amount        Decimal      @db.Decimal(10, 2)
+  reason        String?
+  status        RefundStatus @default(REQUESTED)
+  requestedById String
+  requestedBy   User         @relation("RefundsRequested", fields: [requestedById], references: [id])
+  processedById String?
+  processedBy   User?        @relation("RefundsProcessed", fields: [processedById], references: [id])
+  createdAt     DateTime     @default(now())
+  processedAt   DateTime?
+
+  @@index([paymentId])
+  @@index([status])
+  @@map("refunds")
+}
+
+// ---------------------------------------------------------------------------
+// Instructor earnings & payouts
+// ---------------------------------------------------------------------------
+
+model InstructorEarning {
+  id             String    @id @default(cuid())
+  instructorId   String
+  instructor     User      @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  orderItemId    String    @unique
+  orderItem      OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  grossAmount    Decimal   @db.Decimal(10, 2)
+  // e.g. 0.7000 = instructor keeps 70%.
+  commissionRate Decimal   @db.Decimal(5, 4)
+  netAmount      Decimal   @db.Decimal(10, 2)
+  payoutId       String?
+  payout         Payout?   @relation(fields: [payoutId], references: [id])
+  createdAt      DateTime  @default(now())
+
+  @@index([instructorId])
+  @@index([payoutId])
+  @@map("instructor_earnings")
+}
+
+model Payout {
+  id           String       @id @default(cuid())
+  instructorId String
+  instructor   User         @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  amount       Decimal      @db.Decimal(10, 2)
+  currency     String       @default("USD")
+  status       PayoutStatus @default(PENDING)
+  method       String?
+  reference    String?
+  requestedAt  DateTime     @default(now())
+  processedAt  DateTime?
+
+  earnings InstructorEarning[]
+
+  @@index([instructorId])
+  @@index([status])
+  @@map("payouts")
+}
+
+// ---------------------------------------------------------------------------
+// Messaging
+// ---------------------------------------------------------------------------
+
+model Conversation {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt       DateTime     @default(now())
+  lastReadAt     DateTime?
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  content        String
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  // Supports cursor pagination through a conversation's history.
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@map("messages")
+}
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  message   String
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ---------------------------------------------------------------------------
+// Certificates
+// ---------------------------------------------------------------------------
+
+model Certificate {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId        String
+  course          Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  certificateCode String   @unique
+  // Snapshotted at issuance so a certificate never silently changes if the
+  // student later renames their profile or the instructor edits the course
+  // title — a completion credential should reflect what was true when it
+  // was earned, not the current state of unrelated records.
+  learnerName     String
+  courseTitle     String
+  issuedAt        DateTime @default(now())
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+  @@map("certificates")
+}
+
+// ---------------------------------------------------------------------------
+// Admin / moderation
+// ---------------------------------------------------------------------------
+
+model Report {
+  id           String           @id @default(cuid())
+  reporterId   String
+  reporter     User             @relation("ReportsFiled", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetType   ReportTargetType
+  targetId     String
+  reason       String
+  details      String?
+  status       ReportStatus     @default(OPEN)
+  resolvedById String?
+  resolvedBy   User?            @relation("ReportsResolved", fields: [resolvedById], references: [id])
+  resolvedAt   DateTime?
+  createdAt    DateTime         @default(now())
+
+  @@index([status])
+  @@index([targetType, targetId])
+  @@map("reports")
+}
+
+// ---------------------------------------------------------------------------
+// Authentication (Phase 3)
+// ---------------------------------------------------------------------------
+
+// Opaque, database-backed session. The cookie only ever holds a random
+// token; `tokenHash` (an HMAC of that token, keyed by SESSION_SECRET) is
+// what's stored here, so a leaked database row can't be replayed as a
+// cookie value. See src/server/auth/session.ts.
+model Session {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  lastUsedAt DateTime?
+  userAgent  String?
+  ipAddress  String?
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+// Same opaque-token pattern as Session: only a hash is stored, the raw
+// token is what goes in the (future) reset email link.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
