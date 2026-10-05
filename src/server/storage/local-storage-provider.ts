@@ -4,7 +4,12 @@ import { dirname, join, normalize, resolve, sep } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
 
-import type { RangeSpec, ReadResult, StorageProvider, StoredObjectMetadata } from "./storage-provider";
+import type {
+  RangeSpec,
+  ReadResult,
+  StorageProvider,
+  StoredObjectMetadata,
+} from "./storage-provider";
 
 /**
  * Real local-disk storage for development.

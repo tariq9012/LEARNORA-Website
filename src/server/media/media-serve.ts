@@ -1,8 +1,28 @@
 import { Readable } from "node:stream";
 
 import * as assetRepository from "../repositories/asset-repository";
-import { getStorageProvider } from "../storage";
+import { getStorageProviderFor } from "../storage";
 import { sanitizeDisplayFilename } from "./media-keys";
+
+function isObjectMissing(error: unknown): boolean {
+  const e = error as { name?: string; code?: string; $metadata?: { httpStatusCode?: number } };
+  return (
+    e?.code === "ENOENT" ||
+    e?.name === "NotFound" ||
+    e?.name === "NoSuchKey" ||
+    e?.$metadata?.httpStatusCode === 404
+  );
+}
+
+/** Short identifier such as "AccessDenied" / "403" / "ECONNREFUSED"; nothing else is logged. */
+function safeErrorCode(error: unknown): string {
+  const e = error as { name?: string; code?: string; $metadata?: { httpStatusCode?: number } };
+  const status = e?.$metadata?.httpStatusCode;
+  const label = [e?.name, e?.code].find(
+    (v) => typeof v === "string" && /^[A-Za-z0-9_]{2,40}$/.test(v),
+  );
+  return [label, status].filter(Boolean).join("/") || "unknown";
+}
 
 function parseRangeHeader(rangeHeader: string | null, sizeBytes: number) {
   if (!rangeHeader) return null;
@@ -46,14 +66,23 @@ export async function serveAssetResponse(
   const asset = await assetRepository.findAssetById(assetId);
   if (!asset) return new Response("Not found.", { status: 404 });
 
-  const storage = getStorageProvider();
+  const storage = getStorageProviderFor(asset.storageProvider);
   const disposition = opts?.disposition ?? "inline";
 
   let sizeBytes: number;
   try {
     sizeBytes = (await storage.stat(asset.storageKey)).sizeBytes;
-  } catch {
-    return new Response("File is missing from storage.", { status: 404 });
+  } catch (error) {
+    if (isObjectMissing(error)) {
+      return new Response("File is missing from storage.", { status: 404 });
+    }
+    // Anything else (wrong/insufficient storage credentials, network, outage)
+    // is NOT "file missing". Log a short safe code so it can be diagnosed —
+    // never the message, which can contain endpoints or key ids.
+    console.error(
+      `[media] storage error provider=${asset.storageProvider} assetId=${asset.id} code=${safeErrorCode(error)}`,
+    );
+    return new Response("Storage is temporarily unavailable.", { status: 502 });
   }
 
   const range = parseRangeHeader(request.headers.get("range"), sizeBytes);
@@ -61,6 +90,8 @@ export async function serveAssetResponse(
   const headers = new Headers({
     "Content-Type": asset.mimeType,
     "Accept-Ranges": "bytes",
+    // Phase 15: never let a browser sniff an uploaded file into an executable type.
+    "X-Content-Type-Options": "nosniff",
     // Private lesson videos/resources must never be cached by a shared
     // proxy; public thumbnails are fine to cache briefly.
     "Cache-Control": disposition === "attachment" ? "private, no-store" : "private, max-age=3600",

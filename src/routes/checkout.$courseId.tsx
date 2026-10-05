@@ -4,12 +4,12 @@ import { ShieldCheck, CircleAlert } from "lucide-react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { Button, Card } from "@/components/ui/kit";
 import { categoryImage } from "@/lib/course-images";
-import { currency } from "@/data/mock";
 import {
   getCheckoutFn,
   createCheckoutOrderFn,
   confirmTestPaymentFn,
 } from "@/server/functions/checkout";
+import { formatMoney } from "@/lib/format";
 
 export const Route = createFileRoute("/checkout/$courseId")({
   loader: async ({ params }) => {
@@ -107,17 +107,17 @@ function CheckoutPage() {
           <div className="space-y-2 p-5 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Subtotal</span>
-              <span>{currency(checkout.originalAmount ?? checkout.amount)}</span>
+              <span>{formatMoney(checkout.originalAmount ?? checkout.amount)}</span>
             </div>
             {checkout.originalAmount != null && (
               <div className="flex justify-between text-good">
                 <span>Discount</span>
-                <span>−{currency(checkout.originalAmount - checkout.amount)}</span>
+                <span>−{formatMoney(checkout.originalAmount - checkout.amount)}</span>
               </div>
             )}
             <div className="flex justify-between border-t border-line pt-2 text-base font-medium">
               <span>Total</span>
-              <span>{currency(checkout.amount)}</span>
+              <span>{formatMoney(checkout.amount)}</span>
             </div>
           </div>
 

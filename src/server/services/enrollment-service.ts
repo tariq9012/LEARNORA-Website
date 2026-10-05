@@ -5,6 +5,7 @@ import * as enrollmentRepository from "../repositories/enrollment-repository";
 import * as courseRepository from "../repositories/course-repository";
 import { lessonResourceUrl, lessonVideoUrl } from "../media/media-urls";
 import { isEnrollmentEntitled } from "./enrollment-policy";
+import { notifyCourseCompleted, notifyFreeEnrollment } from "./notification-events";
 import type { SafeUser } from "../auth/types";
 import type {
   EnrollmentStateDTO,
@@ -105,11 +106,15 @@ export async function enrollInCourse(
     // exists — the unique (userId, courseId) constraint means we must
     // reactivate it rather than insert a second row.
     const reactivated = await enrollmentRepository.reactivateEnrollment(existing.id);
+    await notifyFreeEnrollment({ studentId: user.id, courseTitle: course.title });
     return { enrollmentId: reactivated.id };
   }
 
   try {
     const enrollment = await enrollmentRepository.createEnrollment(user.id, course.id);
+    // Phase 11: FREE enrollments get an ENROLLMENT notification (paid ones are
+    // announced by the payment notification instead — no duplicate spam).
+    await notifyFreeEnrollment({ studentId: user.id, courseTitle: course.title });
     return { enrollmentId: enrollment.id };
   } catch (error) {
     // Two concurrent "Enrol now" clicks can both pass the check above; the
@@ -284,6 +289,18 @@ export async function markLessonComplete(
     courseCompleted ? "COMPLETED" : "ACTIVE",
     courseCompleted ? new Date() : null,
   );
+
+  // Phase 11: notify on the FIRST transition into COMPLETED only. `enrollment`
+  // was read before the update, so a course that was already COMPLETED never
+  // re-notifies, and the eventKey (course-completed:<enrollmentId>) also
+  // absorbs two concurrent "last lesson" requests.
+  if (courseCompleted && enrollment.status !== "COMPLETED") {
+    await notifyCourseCompleted({
+      studentId: user.id,
+      enrollmentId: enrollment.id,
+      courseTitle: course.title,
+    });
+  }
 
   return { completedLessonIds, overallPercent, courseCompleted };
 }

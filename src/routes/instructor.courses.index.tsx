@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, Star, Users, MoreVertical } from "lucide-react";
+import { Plus, Star, Users } from "lucide-react";
 import { DashboardLayout, DashboardHeader } from "@/components/layout/DashboardLayout";
 import { Button, Card, EmptyState, SearchBar, StatusBadge, Tabs } from "@/components/ui/kit";
-import { currency } from "@/data/mock";
 import { getInstructorCoursesFn } from "@/server/functions/instructor-course";
 import type { InstructorCourseListItemDTO } from "@/server/dto/instructor-course";
+import { formatPrice } from "@/lib/format";
 
 export const Route = createFileRoute("/instructor/courses/")({
   loader: async () => ({ courses: await getInstructorCoursesFn() }),
@@ -110,7 +110,7 @@ function InstructorCourses() {
                   <StatusBadge status={statusLabel[c.status]} />
                 </div>
                 <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                  {c.category} · {c.level} · {c.price === 0 ? "Free" : currency(c.price)}
+                  {c.category} · {c.level} · {c.price === 0 ? "Free" : formatPrice(c.price)}
                 </p>
                 {c.status === "REJECTED" && c.rejectionReason && (
                   <p className="mt-1.5 text-xs text-destructive">Rejected: {c.rejectionReason}</p>
@@ -137,12 +137,6 @@ function InstructorCourses() {
                     {c.status === "DRAFT" || c.status === "REJECTED" ? "Edit" : "Manage"}
                   </Button>
                 </Link>
-                <button
-                  className="rounded-md p-2 text-muted-foreground hover:text-cream"
-                  aria-label="More options"
-                >
-                  <MoreVertical size={16} />
-                </button>
               </div>
             </Card>
           ))}

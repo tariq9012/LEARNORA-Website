@@ -1,4 +1,5 @@
 import { prisma } from "../db/client";
+import { ENTITLED_ENROLLMENT_STATUSES } from "../services/enrollment-policy";
 
 export function findEnrollment(userId: string, courseId: string) {
   return prisma.enrollment.findUnique({
@@ -50,9 +51,15 @@ const MY_LEARNING_INCLUDE = {
   lessonProgress: { where: { completed: true }, select: { lessonId: true } },
 } as const;
 
+/**
+ * My Learning / dashboard source. Only CURRENTLY ENTITLED enrollments are
+ * listed: a CANCELLED one (e.g. after a Phase 10 refund) has no access, so it
+ * must not appear as a course the student can "continue" — the row is kept
+ * in the database for history, not shown as a live grant.
+ */
 export function listEnrollmentsWithCourseForUser(userId: string) {
   return prisma.enrollment.findMany({
-    where: { userId },
+    where: { userId, status: { in: [...ENTITLED_ENROLLMENT_STATUSES] } },
     include: MY_LEARNING_INCLUDE,
     orderBy: [{ lastAccessedAt: { sort: "desc", nulls: "last" } }, { enrolledAt: "desc" }],
   });
@@ -125,5 +132,77 @@ export function findLessonForProgress(lessonId: string) {
   return prisma.lesson.findUnique({
     where: { id: lessonId },
     select: { id: true, duration: true, section: { select: { courseId: true } } },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Phase 14 — admin enrollment listing + instructor students (ownership in the query)
+// ---------------------------------------------------------------------------
+
+export type EnrollmentListFilters = {
+  search?: string;
+  status?: "ACTIVE" | "COMPLETED" | "CANCELLED";
+  courseId?: string;
+  /** Set by the SERVICE from the session for instructor views — never from the client. Restricts to courses this instructor owns. */
+  instructorId?: string;
+};
+
+function buildEnrollmentListWhere(filters: EnrollmentListFilters) {
+  return {
+    ...(filters.status && { status: filters.status }),
+    ...(filters.courseId && { courseId: filters.courseId }),
+    // Ownership is part of the WHERE clause itself, so a courseId that
+    // belongs to another instructor simply matches zero rows.
+    ...(filters.instructorId && { course: { instructorId: filters.instructorId } }),
+    ...(filters.search && {
+      OR: [
+        { user: { name: { contains: filters.search, mode: "insensitive" as const } } },
+        { course: { title: { contains: filters.search, mode: "insensitive" as const } } },
+      ],
+    }),
+  };
+}
+
+/** Explicit select: student display name + avatar only — no email, no raw user row. */
+export function listEnrollmentsForListing(
+  filters: EnrollmentListFilters,
+  skip: number,
+  take: number,
+) {
+  return prisma.enrollment.findMany({
+    where: buildEnrollmentListWhere(filters),
+    orderBy: { enrolledAt: "desc" },
+    skip,
+    take,
+    select: {
+      id: true,
+      status: true,
+      enrolledAt: true,
+      completedAt: true,
+      courseId: true,
+      user: { select: { name: true, avatar: true, avatarAssetId: true } },
+      course: { select: { title: true, instructor: { select: { name: true } } } },
+    },
+  });
+}
+
+export function countEnrollmentsForListing(filters: EnrollmentListFilters) {
+  return prisma.enrollment.count({ where: buildEnrollmentListWhere(filters) });
+}
+
+/** Lesson totals for a page of courses in one query. */
+export function lessonTotalsForCourses(courseIds: string[]) {
+  return prisma.course.findMany({
+    where: { id: { in: courseIds } },
+    select: { id: true, sections: { select: { _count: { select: { lessons: true } } } } },
+  });
+}
+
+/** Completed-lesson counts for a page of enrollments in one grouped query. */
+export function completedLessonCounts(enrollmentIds: string[]) {
+  return prisma.lessonProgress.groupBy({
+    by: ["enrollmentId"],
+    where: { enrollmentId: { in: enrollmentIds }, completed: true },
+    _count: { _all: true },
   });
 }

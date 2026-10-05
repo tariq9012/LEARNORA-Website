@@ -6,17 +6,40 @@
  * and services call this interface; `index.ts` decides which concrete
  * provider backs it based on STORAGE_PROVIDER.
  *
- * Today only a LOCAL (filesystem) provider is implemented — see
- * local-storage-provider.ts. It's fine for local development but is not a
- * production object store. A production provider (S3/R2/GCS/etc.) should
- * implement this same interface; nothing above this layer would need to
- * change.
+ * Implementations: LOCAL (filesystem, development / single VM with a
+ * persistent volume — local-storage-provider.ts) and S3 (any S3-compatible
+ * object store such as Cloudflare R2 — s3-storage-provider.ts). Each Asset row
+ * records which one holds it, so old local files keep working after S3 is
+ * enabled (see getStorageProviderFor in index.ts).
  */
 
 export type StoredObjectMetadata = {
   sizeBytes: number;
   /** Best-effort last-modified time, used for cache headers. */
   lastModified?: Date;
+  /** Content-Type the object was stored with (S3/R2 only). Used to verify direct uploads. */
+  contentType?: string;
+};
+
+/** What the server asks a provider to authorize for ONE object (Phase 18). */
+export type DirectUploadRequest = {
+  /** Server-generated key (media-keys.ts) — never client input. */
+  key: string;
+  contentType: string;
+  expiresInSeconds: number;
+};
+
+/**
+ * Everything the browser needs to upload that one object, and nothing else:
+ * no credentials, no bucket-wide permission. The signature only authorizes a
+ * PUT to this exact key until `expiresAt`.
+ */
+export type DirectUploadTicket = {
+  method: "PUT";
+  url: string;
+  /** Headers the browser MUST send exactly (they are part of the signature). */
+  headers: Record<string, string>;
+  expiresAt: Date;
 };
 
 export type RangeSpec = { start: number; end: number };
@@ -30,7 +53,7 @@ export type ReadResult = {
 };
 
 export interface StorageProvider {
-  readonly kind: "LOCAL";
+  readonly kind: "LOCAL" | "S3";
 
   /**
    * Persists a readable stream/buffer under `key`. Callers are
@@ -52,4 +75,11 @@ export interface StorageProvider {
    * exist.
    */
   read(key: string, range?: RangeSpec): Promise<ReadResult>;
+
+  /**
+   * Phase 18. Only providers where the browser can talk to the store directly
+   * implement this (S3/R2). LOCAL does not, which is how the app knows to keep
+   * using the server-mediated multipart upload for local development.
+   */
+  createDirectUpload?(request: DirectUploadRequest): Promise<DirectUploadTicket>;
 }

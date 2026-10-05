@@ -1,106 +1,100 @@
-import { useState } from "react";
-import { Avatar, Button, DataTable, Modal, SearchBar, Select, StatusBadge } from "@/components/ui/kit";
-import { users, type PlatformUser, type Role } from "@/data/mock";
+import { Avatar, Button, DataTable, StatusBadge } from "@/components/ui/kit";
+import { formatShortDate, initialsOf } from "@/lib/format";
+import type { AdminUserDTO } from "@/server/dto/admin";
 
-export function UserTable({ role }: { role?: Role }) {
-  const [q, setQ] = useState("");
-  const [status, setStatus] = useState("all");
-  const [selected, setSelected] = useState<PlatformUser | null>(null);
-  const [suspended, setSuspended] = useState<string[]>([]);
+const ROLE_LABEL: Record<AdminUserDTO["role"], string> = {
+  STUDENT: "Student",
+  INSTRUCTOR: "Instructor",
+  ADMIN: "Admin",
+};
 
-  const rows = users
-    .filter((u) => (role ? u.role === role : true))
-    .filter((u) => (status === "all" ? true : u.status.toLowerCase() === status))
-    .filter((u) => `${u.name} ${u.email}`.toLowerCase().includes(q.toLowerCase()));
+const STATUS_LABEL: Record<AdminUserDTO["status"], string> = {
+  ACTIVE: "Active",
+  SUSPENDED: "Suspended",
+  BANNED: "Banned",
+};
 
+const APPROVAL_LABEL = {
+  PENDING: "Pending approval",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
+} as const;
+
+/**
+ * Purely presentational (Phase 15): rows come in through props, all
+ * fetching / filtering / pagination / mutations live in the route. No mock
+ * data, no local state.
+ */
+export function UserTable({
+  users,
+  emptyMessage,
+  busyUserId,
+  onManage,
+}: {
+  users: AdminUserDTO[];
+  emptyMessage: string;
+  /** User whose status change is in flight (disables its button). */
+  busyUserId?: string | null | undefined;
+  onManage: (user: AdminUserDTO) => void;
+}) {
   return (
-    <>
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <div className="min-w-64 flex-1">
-          <SearchBar placeholder="Search by name or email" value={q} onChange={setQ} />
-        </div>
-        <Select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full sm:w-48">
-          <option value="all">All statuses</option>
-          <option value="active">Active</option>
-          <option value="pending">Pending</option>
-          <option value="suspended">Suspended</option>
-        </Select>
-      </div>
-
-      <DataTable<PlatformUser>
-        caption="Platform users"
-        empty="No users match this filter."
-        rows={rows}
-        columns={[
-          {
-            key: "name",
-            header: "User",
-            render: (u) => (
-              <div className="flex items-center gap-3">
-                <Avatar initials={u.initials} size="sm" />
-                <div>
-                  <p className="font-medium">{u.name}</p>
-                  <p className="font-mono text-[10px] text-muted-foreground">{u.email}</p>
-                </div>
+    <DataTable<AdminUserDTO>
+      caption="Platform users"
+      empty={emptyMessage}
+      rows={users}
+      columns={[
+        {
+          key: "name",
+          header: "User",
+          render: (u) => (
+            <div className="flex items-center gap-3">
+              <Avatar initials={initialsOf(u.name)} src={u.avatarUrl} size="sm" />
+              <div>
+                <p className="font-medium">{u.name}</p>
+                <p className="font-mono text-[10px] text-muted-foreground">{u.email}</p>
               </div>
+            </div>
+          ),
+        },
+        { key: "role", header: "Role", render: (u) => ROLE_LABEL[u.role] },
+        {
+          key: "profile",
+          header: "Profile",
+          render: (u) =>
+            u.instructorApproval ? (
+              <span className="text-xs">{APPROVAL_LABEL[u.instructorApproval]}</span>
+            ) : (
+              <span className="text-xs text-muted-foreground">—</span>
             ),
-          },
-          { key: "role", header: "Role", render: (u) => <span className="capitalize">{u.role}</span> },
-          {
-            key: "status",
-            header: "Status",
-            render: (u) => <StatusBadge status={suspended.includes(u.id) ? "Suspended" : u.status} />,
-          },
-          { key: "joined", header: "Joined", render: (u) => u.joined },
-          { key: "enrollments", header: "Enrolments", render: (u) => u.enrollments },
-          {
-            key: "actions",
-            header: "",
-            className: "text-right",
-            render: (u) => (
-              <Button variant="outline" size="sm" onClick={() => setSelected(u)}>
+        },
+        {
+          key: "status",
+          header: "Status",
+          render: (u) => <StatusBadge status={STATUS_LABEL[u.status]} />,
+        },
+        { key: "joined", header: "Joined", render: (u) => formatShortDate(u.joinedAt) },
+        {
+          key: "actions",
+          header: "",
+          className: "text-right",
+          render: (u) =>
+            u.statusEditable ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busyUserId === u.id}
+                onClick={() => onManage(u)}
+                aria-label={`Manage account status for ${u.name}`}
+              >
                 Manage
               </Button>
+            ) : (
+              <span className="text-[11px] text-muted-foreground">
+                {u.role === "ADMIN" ? "Protected" : "You"}
+              </span>
             ),
-          },
-        ]}
-      />
-
-      <Modal
-        open={Boolean(selected)}
-        onClose={() => setSelected(null)}
-        title={selected?.name ?? "User"}
-        description={selected?.email}
-      >
-        <div className="space-y-3 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Role</span>
-            <span className="capitalize">{selected?.role}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Joined</span>
-            <span>{selected?.joined}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Enrolments</span>
-            <span>{selected?.enrollments}</span>
-          </div>
-        </div>
-        <div className="mt-6 flex flex-wrap justify-end gap-3">
-          <Button variant="ghost" onClick={() => setSelected(null)}>
-            Close
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => {
-              if (selected) setSuspended((p) => [...p, selected.id]);
-              setSelected(null);
-            }}
-          >
-            Suspend account
-          </Button>
-        </div>
-      </Modal>
-    </>
+        },
+      ]}
+    />
   );
 }

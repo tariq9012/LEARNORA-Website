@@ -1,8 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, BookOpen, Clock3, PlusCircle, Star, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  Bell,
+  BookOpen,
+  Clock3,
+  MessageSquare,
+  PlusCircle,
+  Star,
+  Users,
+  Wallet,
+} from "lucide-react";
 import { DashboardLayout, DashboardHeader } from "@/components/layout/DashboardLayout";
 import { Button, Card, DataTable, StatCard, StatusBadge } from "@/components/ui/kit";
-import { currency } from "@/data/mock";
+import { formatMoney, formatPrice } from "@/lib/format";
+import { getInstructorEarningsSummaryFn } from "@/server/functions/earnings";
+import { getUnreadCountsFn } from "@/server/functions/notifications";
 import {
   getInstructorCoursesFn,
   getMyInstructorApprovalStatusFn,
@@ -11,11 +23,13 @@ import type { InstructorCourseListItemDTO } from "@/server/dto/instructor-course
 
 export const Route = createFileRoute("/instructor/dashboard")({
   loader: async () => {
-    const [courses, approvalStatus] = await Promise.all([
+    const [courses, approvalStatus, earnings, unread] = await Promise.all([
       getInstructorCoursesFn(),
       getMyInstructorApprovalStatusFn(),
+      getInstructorEarningsSummaryFn(),
+      getUnreadCountsFn(),
     ]);
-    return { courses, approvalStatus };
+    return { courses, approvalStatus, earnings, unread };
   },
   head: () => ({
     meta: [
@@ -40,7 +54,7 @@ const STATUS_LABEL: Record<InstructorCourseListItemDTO["status"], string> = {
 };
 
 function InstructorDashboard() {
-  const { courses, approvalStatus } = Route.useLoaderData();
+  const { courses, approvalStatus, earnings, unread } = Route.useLoaderData();
   const published = courses.filter((c) => c.status === "PUBLISHED");
   const inProgress = courses.filter(
     (c) => c.status === "DRAFT" || c.status === "PENDING_REVIEW",
@@ -93,6 +107,36 @@ function InstructorDashboard() {
         <StatCard label="Draft & pending" value={inProgress} hint="Not yet live" icon={Clock3} />
       </div>
 
+      <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <StatCard
+          label="Total earned"
+          value={formatMoney(earnings.totalEarned, earnings.currency)}
+          hint="After refunds"
+          icon={Wallet}
+        />
+        <StatCard
+          label="Available balance"
+          value={formatMoney(earnings.availableBalance, earnings.currency)}
+          hint="Details on the Earnings page"
+          icon={Wallet}
+        />
+        <StatCard
+          label="Pending payout"
+          value={formatMoney(earnings.pendingPayout, earnings.currency)}
+          hint="Awaiting admin"
+          icon={Clock3}
+        />
+      </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <Link to="/instructor/notifications">
+          <StatCard label="Unread notifications" value={unread.notifications} icon={Bell} />
+        </Link>
+        <Link to="/instructor/messages">
+          <StatCard label="Unread messages" value={unread.messages} icon={MessageSquare} />
+        </Link>
+      </div>
+
       <section className="mt-12">
         {courses.length === 0 ? (
           <p className="text-sm text-muted-foreground">
@@ -130,7 +174,7 @@ function InstructorDashboard() {
               {
                 key: "price",
                 header: "Price",
-                render: (c) => (c.price === 0 ? "Free" : currency(c.price)),
+                render: (c) => (c.price === 0 ? "Free" : formatPrice(c.price)),
               },
             ]}
           />

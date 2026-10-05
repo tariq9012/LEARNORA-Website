@@ -1,10 +1,11 @@
-import { Prisma } from "../../generated/prisma/client";
 import { prisma } from "../db/client";
 import * as orderRepository from "../repositories/order-repository";
 import * as paymentRepository from "../repositories/payment-repository";
 import { isEnrollmentEntitled } from "./enrollment-policy";
 import { toOrderSummaryDTO, OrderNotFoundError } from "./checkout-service";
 import { getPaymentProvider } from "../payments";
+import { computeEarningSplit } from "../config/finance-policy";
+import { notifyPaymentSucceeded } from "./notification-events";
 import type { SafeUser } from "../auth/types";
 import type { OrderSummaryDTO } from "../dto/checkout";
 
@@ -21,10 +22,6 @@ export class PaymentFailedError extends PaymentError {
     super("Payment failed. You can try again.");
   }
 }
-
-/** Instructor keeps 70% of the sale — a fixed Phase 9 default, not yet a per-instructor negotiated rate (that's a future enhancement, not scope here). */
-const PLATFORM_COMMISSION_RATE = new Prisma.Decimal("0.3000");
-const INSTRUCTOR_SHARE_RATE = new Prisma.Decimal("0.7000");
 
 /** Thrown internally to abort the transaction when a concurrent request already claimed the order — never surfaced to the caller, see confirmTestPayment's catch. */
 class OrderAlreadyClaimedError extends Error {}
@@ -57,7 +54,13 @@ export async function confirmTestPayment(
   if (!order || order.userId !== user.id) throw new OrderNotFoundError();
 
   // Already resolved — return it as-is rather than processing again.
-  if (order.status === "PAID") return toOrderSummaryDTO(order);
+  if (order.status === "PAID") {
+    const summary = toOrderSummaryDTO(order);
+    // Already paid — re-announcing is a no-op unless the first (best-effort)
+    // notification was lost; the (userId, eventKey) unique key prevents duplicates.
+    await announcePaid(user.id, summary);
+    return summary;
+  }
   if (order.status !== "PENDING") throw new OrderNotPayableError();
 
   const item = order.items[0];
@@ -126,13 +129,21 @@ export async function confirmTestPayment(
         select: { instructorId: true },
       });
       if (course) {
+        // The revenue split comes from ONE server-side policy
+        // (config/finance-policy.ts, env-configurable, default 70/30) and is
+        // snapshotted onto the earning row here, so later changes to the
+        // configured share never rewrite historical earnings. Phase 10: a
+        // successful paid purchase is immediately AVAILABLE (see the
+        // EarningStatus lifecycle in schema.prisma).
+        const split = computeEarningSplit(item.price);
         await tx.instructorEarning.create({
           data: {
             instructorId: course.instructorId,
             orderItemId: item.id,
-            grossAmount: item.price,
-            commissionRate: PLATFORM_COMMISSION_RATE,
-            netAmount: item.price.mul(INSTRUCTOR_SHARE_RATE).toDecimalPlaces(2),
+            grossAmount: split.grossAmount,
+            commissionRate: split.commissionRate,
+            netAmount: split.netAmount,
+            status: "AVAILABLE",
           },
         });
       }
@@ -147,5 +158,22 @@ export async function confirmTestPayment(
 
   const fresh = await orderRepository.findOrderById(orderId);
   if (!fresh) throw new OrderNotFoundError();
-  return toOrderSummaryDTO(fresh);
+  const summary = toOrderSummaryDTO(fresh);
+  // Phase 11: notify AFTER the payment/enrollment/earning transaction has
+  // committed. Best-effort and deduplicated (eventKey payment:<orderId>): a
+  // notification problem can never undo or fail a successful payment.
+  await announcePaid(user.id, summary);
+  return summary;
+}
+
+async function announcePaid(studentId: string, summary: OrderSummaryDTO) {
+  if (summary.status !== "PAID") return;
+  await notifyPaymentSucceeded({
+    studentId,
+    orderId: summary.orderId,
+    orderNumber: summary.orderNumber,
+    courseTitle: summary.courseTitle,
+    amount: summary.amount.toFixed(2),
+    currency: summary.currency,
+  });
 }

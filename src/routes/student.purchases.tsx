@@ -2,8 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Receipt } from "lucide-react";
 import { DashboardLayout, DashboardHeader } from "@/components/layout/DashboardLayout";
 import { Button, Card, EmptyState, StatusBadge } from "@/components/ui/kit";
-import { currency } from "@/data/mock";
-import { formatMonthYear } from "@/lib/format";
+import { formatMoney, formatMonthYear, formatShortDate } from "@/lib/format";
 import { getMyPurchasesFn } from "@/server/functions/checkout";
 import type { PurchaseHistoryItemDTO } from "@/server/dto/checkout";
 
@@ -52,11 +51,14 @@ function PurchasesPage() {
                 <p className="font-medium">{p.courseTitle}</p>
                 <p className="mt-1 font-mono text-[11px] text-muted-foreground">
                   {p.orderNumber} · {formatMonthYear(new Date(p.createdAt))}
+                  {p.status === "REFUNDED" && p.refundedAt && (
+                    <> · refunded {formatShortDate(p.refundedAt)}</>
+                  )}
                 </p>
               </div>
               <div className="flex items-center gap-4">
                 <StatusBadge status={STATUS_LABEL[p.status]} />
-                <span className="font-medium">{currency(p.amount)}</span>
+                <span className="font-medium">{formatMoney(p.amount)}</span>
                 {p.status === "PAID" && (
                   <Link
                     to="/checkout/success/$orderId"

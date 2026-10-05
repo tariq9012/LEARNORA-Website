@@ -66,7 +66,9 @@ export function mapCourseToCardDTO(course: CourseWithCardRelations): CourseCardD
     rating: averageRating(course.reviews.map((r) => r.rating)),
     reviewCount: course._count.reviews,
     students: course._count.enrollments,
-    thumbnailUrl: course.thumbnailAssetId ? publicAssetUrl(course.thumbnailAssetId) : course.thumbnail,
+    thumbnailUrl: course.thumbnailAssetId
+      ? publicAssetUrl(course.thumbnailAssetId)
+      : course.thumbnail,
     ...priceFields(course.price, course.discountPrice),
   };
 }

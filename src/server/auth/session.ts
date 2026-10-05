@@ -120,6 +120,19 @@ export function getRawSessionToken(): string | null {
   return getCookie(SESSION_COOKIE_NAME) ?? null;
 }
 
+/**
+ * Resolves the current request's own Session row id (not the raw cookie
+ * token, and never the tokenHash) — used by session-management-service.ts
+ * to mark "this device" in the sessions list and to exclude it from a
+ * "sign out other sessions" bulk revoke. Null if there's no valid session.
+ */
+export async function getCurrentSessionId(): Promise<string | null> {
+  const rawToken = getCookie(SESSION_COOKIE_NAME);
+  if (!rawToken) return null;
+  const session = await sessionRepository.findValidSessionByTokenHash(hashOpaqueToken(rawToken));
+  return session?.id ?? null;
+}
+
 /** Revokes the current session (if any) and clears the cookie. Used for logout. */
 export async function revokeCurrentSession(): Promise<void> {
   const rawToken = getCookie(SESSION_COOKIE_NAME);

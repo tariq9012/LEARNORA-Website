@@ -6,9 +6,15 @@ export const Route = createFileRoute("/terms")({
   head: () => ({
     meta: [
       { title: "Terms of service — Learnora" },
-      { name: "description", content: "The agreement covering Learnora accounts, enrolments, refunds and content." },
+      {
+        name: "description",
+        content: "The agreement covering Learnora accounts, enrolments, refunds and content.",
+      },
       { property: "og:title", content: "Terms of service — Learnora" },
-      { property: "og:description", content: "Accounts, enrolments, refunds and content licensing on Learnora." },
+      {
+        property: "og:description",
+        content: "Accounts, enrolments, refunds and content licensing on Learnora.",
+      },
     ],
   }),
   component: TermsPage,

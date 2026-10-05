@@ -2,7 +2,13 @@ import { getServerEnv } from "../env";
 import { SimulatedPaymentProvider } from "./simulated-payment-provider";
 import type { PaymentProvider } from "./payment-provider";
 
-export type { PaymentProvider, ChargeRequest, ChargeResult } from "./payment-provider";
+export type {
+  PaymentProvider,
+  ChargeRequest,
+  ChargeResult,
+  RefundRequest,
+  RefundResult,
+} from "./payment-provider";
 
 let cached: PaymentProvider | undefined;
 

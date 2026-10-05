@@ -30,8 +30,7 @@ export const buttonVariants = cva(
 );
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {}
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {}
 
 export function Button({ className, variant, size, block, ...props }: ButtonProps) {
   return <button className={cn(buttonVariants({ variant, size, block }), className)} {...props} />;
@@ -49,23 +48,25 @@ export function CardBody({ className, ...props }: React.HTMLAttributes<HTMLDivEl
 
 /* -------------------------------- Badge -------------------------------- */
 
-const badgeVariants = cva("inline-flex items-center rounded-md font-mono text-[10px] px-2 py-1 tracking-wide", {
-  variants: {
-    tone: {
-      brand: "bg-brand text-ink font-medium",
-      neutral: "bg-ink/70 text-cream ring-1 ring-line",
-      good: "bg-good/15 text-good ring-1 ring-good/30",
-      warn: "bg-warn/15 text-warn ring-1 ring-warn/30",
-      danger: "bg-destructive/15 text-destructive ring-1 ring-destructive/30",
-      soft: "bg-panel-2 text-muted-foreground ring-1 ring-line",
+const badgeVariants = cva(
+  "inline-flex items-center rounded-md font-mono text-[10px] px-2 py-1 tracking-wide",
+  {
+    variants: {
+      tone: {
+        brand: "bg-brand text-ink font-medium",
+        neutral: "bg-ink/70 text-cream ring-1 ring-line",
+        good: "bg-good/15 text-good ring-1 ring-good/30",
+        warn: "bg-warn/15 text-warn ring-1 ring-warn/30",
+        danger: "bg-destructive/15 text-destructive ring-1 ring-destructive/30",
+        soft: "bg-panel-2 text-muted-foreground ring-1 ring-line",
+      },
     },
+    defaultVariants: { tone: "neutral" },
   },
-  defaultVariants: { tone: "neutral" },
-});
+);
 
 export interface BadgeProps
-  extends React.HTMLAttributes<HTMLSpanElement>,
-    VariantProps<typeof badgeVariants> {}
+  extends React.HTMLAttributes<HTMLSpanElement>, VariantProps<typeof badgeVariants> {}
 
 export function Badge({ className, tone, ...props }: BadgeProps) {
   return <span className={cn(badgeVariants({ tone }), className)} {...props} />;
@@ -73,11 +74,25 @@ export function Badge({ className, tone, ...props }: BadgeProps) {
 
 export function StatusBadge({ status }: { status: string }) {
   const tone =
-    status === "Published" || status === "Active" || status === "Completed"
+    status === "Published" ||
+    status === "Active" ||
+    status === "Completed" ||
+    status === "Approved" ||
+    status === "Visible" ||
+    status === "Paid"
       ? "good"
-      : status === "Draft" || status === "Scheduled" || status === "Expired"
+      : status === "Draft" ||
+          status === "Scheduled" ||
+          status === "Expired" ||
+          status === "Inactive" ||
+          status === "Archived" ||
+          status === "Cancelled"
         ? "soft"
-        : status === "Rejected" || status === "Suspended" || status === "Flagged"
+        : status === "Rejected" ||
+            status === "Suspended" ||
+            status === "Flagged" ||
+            status === "Hidden" ||
+            status === "Failed"
           ? "danger"
           : "warn";
   return <Badge tone={tone}>{status}</Badge>;
@@ -87,10 +102,13 @@ export function StatusBadge({ status }: { status: string }) {
 
 export function Avatar({
   initials,
+  src,
   size = "md",
   className,
 }: {
   initials: string;
+  /** Real uploaded avatar URL (Phase 13). Falls back to initials on load error or when omitted/null. */
+  src?: string | null;
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
 }) {
@@ -100,16 +118,27 @@ export function Avatar({
     lg: "size-14 text-sm",
     xl: "size-20 text-lg",
   };
+  const [imageFailed, setImageFailed] = React.useState(false);
+  const showImage = Boolean(src) && !imageFailed;
+
   return (
     <span
       className={cn(
-        "grid shrink-0 place-items-center rounded-full bg-panel-2 ring-1 ring-line font-display text-brand-soft",
+        "grid shrink-0 place-items-center overflow-hidden rounded-full bg-panel-2 ring-1 ring-line font-display text-brand-soft",
         sizes[size],
         className,
       )}
-      aria-hidden="true"
     >
-      {initials}
+      {showImage ? (
+        <img
+          src={src!}
+          alt=""
+          className="size-full object-cover"
+          onError={() => setImageFailed(true)}
+        />
+      ) : (
+        <span aria-hidden="true">{initials}</span>
+      )}
     </span>
   );
 }
@@ -135,7 +164,9 @@ export function Rating({
         ))}
       </span>
       {showValue && <span className="font-medium">{value.toFixed(1)}</span>}
-      {count !== undefined && <span className="text-muted-foreground">({count.toLocaleString()})</span>}
+      {count !== undefined && (
+        <span className="text-muted-foreground">({count.toLocaleString()})</span>
+      )}
       <span className="sr-only">{value} out of 5 stars</span>
     </span>
   );
@@ -168,7 +199,10 @@ export function ProgressBar({
         aria-valuemax={100}
         aria-label={label ?? "Progress"}
       >
-        <div className="h-full rounded-full bg-brand transition-all duration-500" style={{ width: `${value}%` }} />
+        <div
+          className="h-full rounded-full bg-brand transition-all duration-500"
+          style={{ width: `${value}%` }}
+        />
       </div>
     </div>
   );
@@ -190,7 +224,9 @@ export function StatCard({
   return (
     <Card className="p-5">
       <div className="flex items-start justify-between">
-        <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">{label}</p>
+        <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+          {label}
+        </p>
         {Icon && <Icon size={16} className="text-brand-soft" />}
       </div>
       <p className="mt-2 font-display text-3xl tracking-tight">{value}</p>
@@ -261,7 +297,10 @@ export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInp
   return <input className={cn(inputClass, className)} {...props} />;
 }
 
-export function Textarea({ className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export function Textarea({
+  className,
+  ...props
+}: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea className={cn(inputClass, "min-h-28 resize-y", className)} {...props} />;
 }
 
@@ -361,7 +400,11 @@ export function Modal({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 grid place-items-center p-4">
-      <div className="absolute inset-0 bg-ink/80 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div
+        className="absolute inset-0 bg-ink/80 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden="true"
+      />
       <div
         role="dialog"
         aria-modal="true"
@@ -373,7 +416,11 @@ export function Modal({
             <h2 className="font-display text-xl tracking-tight">{title}</h2>
             {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
           </div>
-          <button onClick={onClose} aria-label="Close dialog" className="rounded-md p-1 text-muted-foreground hover:text-cream">
+          <button
+            onClick={onClose}
+            aria-label="Close dialog"
+            className="rounded-md p-1 text-muted-foreground hover:text-cream"
+          >
             <X size={18} />
           </button>
         </div>
@@ -430,9 +477,7 @@ export function DataTable<T extends { id: string }>({
   caption?: string;
 }) {
   if (rows.length === 0) {
-    return (
-      <Card className="px-6 py-12 text-center text-sm text-muted-foreground">{empty}</Card>
-    );
+    return <Card className="px-6 py-12 text-center text-sm text-muted-foreground">{empty}</Card>;
   }
   return (
     <Card className="overflow-hidden">
@@ -457,7 +502,10 @@ export function DataTable<T extends { id: string }>({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.id} className="border-b border-line last:border-0 transition-colors hover:bg-panel-2/60">
+              <tr
+                key={row.id}
+                className="border-b border-line last:border-0 transition-colors hover:bg-panel-2/60"
+              >
                 {columns.map((c) => (
                   <td key={c.key} className={cn("px-5 py-4 align-middle", c.className)}>
                     {c.render(row)}
@@ -469,6 +517,56 @@ export function DataTable<T extends { id: string }>({
         </table>
       </div>
     </Card>
+  );
+}
+
+/* ------------------------------- Pagination ------------------------------ */
+
+/**
+ * Presentational prev/next control for server-paginated tables (Phase 14).
+ * Knows nothing about data fetching — the caller owns `page` and refetches
+ * when `onChange` fires. `page` is 1-indexed, matching paginationFields
+ * in src/server/validation/pagination.ts.
+ */
+export function Pagination({
+  page,
+  pageSize,
+  total,
+  onChange,
+  disabled = false,
+}: {
+  page: number;
+  pageSize: number;
+  total: number;
+  onChange: (page: number) => void;
+  disabled?: boolean;
+}) {
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  if (total <= pageSize) return null;
+  return (
+    <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
+      <span className="font-mono text-[11px]">
+        Page {page} of {pageCount} · {total.toLocaleString("en-US")} total
+      </span>
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={disabled || page <= 1}
+          onClick={() => onChange(page - 1)}
+        >
+          Previous
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={disabled || page >= pageCount}
+          onClick={() => onChange(page + 1)}
+        >
+          Next
+        </Button>
+      </div>
+    </div>
   );
 }
 

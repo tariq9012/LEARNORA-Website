@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { MessageInstructorButton } from "@/components/course/MessageInstructorButton";
 import { useMemo, useState } from "react";
 import { z } from "zod";
 import {
@@ -79,6 +80,7 @@ function CoursePlayerRoute() {
 }
 
 function CoursePlayer({ course }: { course: CourseLearningDTO }) {
+  const { courseId: courseSlug } = Route.useParams();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
 
@@ -224,6 +226,7 @@ function CoursePlayer({ course }: { course: CourseLearningDTO }) {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <MessageInstructorButton courseSlug={courseSlug} />
             <Link to="/student/learning" className="hidden sm:block">
               <Button variant="ghost" size="sm">
                 <ArrowLeft size={14} /> My learning

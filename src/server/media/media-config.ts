@@ -5,7 +5,8 @@
  * one place.
  */
 
-export type MediaPurpose = "COURSE_THUMBNAIL" | "COURSE_PREVIEW" | "LESSON_VIDEO" | "LESSON_RESOURCE";
+export type MediaPurpose =
+  "COURSE_THUMBNAIL" | "COURSE_PREVIEW" | "LESSON_VIDEO" | "LESSON_RESOURCE" | "AVATAR";
 
 const MB = 1024 * 1024;
 
@@ -14,6 +15,7 @@ export const MAX_SIZE_BYTES: Record<MediaPurpose, number> = {
   COURSE_PREVIEW: 100 * MB,
   LESSON_VIDEO: 500 * MB,
   LESSON_RESOURCE: 50 * MB,
+  AVATAR: 3 * MB,
 };
 
 type MimeRule = { mime: string; extensions: string[] };
@@ -53,6 +55,7 @@ export const ALLOWED_TYPES: Record<MediaPurpose, MimeRule[]> = {
   COURSE_PREVIEW: VIDEO_TYPES,
   LESSON_VIDEO: VIDEO_TYPES,
   LESSON_RESOURCE: RESOURCE_TYPES,
+  AVATAR: IMAGE_TYPES,
 };
 
 // Explicitly rejected regardless of any allowlist match on a spoofed MIME
@@ -89,7 +92,11 @@ function extensionOf(filename: string): string {
  * allowlist for a purpose. Does not by itself guarantee the bytes match
  * (see file-signature.ts for that) — this is the first, cheap gate.
  */
-export function assertAllowedType(purpose: MediaPurpose, mimeType: string, originalFilename: string) {
+export function assertAllowedType(
+  purpose: MediaPurpose,
+  mimeType: string,
+  originalFilename: string,
+) {
   const ext = extensionOf(originalFilename);
 
   if (DANGEROUS_EXTENSIONS.has(ext)) {

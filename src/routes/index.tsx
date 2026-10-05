@@ -23,17 +23,22 @@ import {
 } from "@/components/ui/kit";
 import { CourseCard } from "@/components/course/CourseCard";
 import { CategoryCard } from "@/components/course/CategoryCard";
-import { reviews, platformStats, compact } from "@/data/mock";
-import { getCategoriesFn, getFeaturedCoursesFn } from "@/server/functions/catalog";
+import { compact } from "@/lib/format";
+import {
+  getCategoriesFn,
+  getFeaturedCoursesFn,
+  getPlatformStatsFn,
+} from "@/server/functions/catalog";
 import { heroStudy } from "@/lib/course-images";
 
 export const Route = createFileRoute("/")({
   loader: async () => {
-    const [categories, featured] = await Promise.all([
+    const [categories, featured, stats] = await Promise.all([
       getCategoriesFn(),
       getFeaturedCoursesFn({ data: {} }),
+      getPlatformStatsFn(),
     ]);
-    return { categories, featured };
+    return { categories, featured, stats };
   },
   head: () => ({
     meta: [
@@ -104,7 +109,7 @@ const steps = [
 
 function Home() {
   const navigate = useNavigate();
-  const { categories, featured } = Route.useLoaderData();
+  const { categories, featured, stats } = Route.useLoaderData();
 
   return (
     <SiteLayout>
@@ -265,10 +270,10 @@ function Home() {
       <section className="border-y border-line bg-panel/40">
         <div className="mx-auto grid max-w-[1240px] grid-cols-2 gap-8 px-6 py-14 lg:grid-cols-4">
           {[
-            { v: `${compact(platformStats.students)}+`, l: "Active students" },
-            { v: compact(platformStats.courses), l: "Expert courses" },
-            { v: compact(platformStats.instructors), l: "Instructors" },
-            { v: `${compact(platformStats.lessonsCompleted)}+`, l: "Lessons completed" },
+            { v: compact(stats.activeStudents), l: "Active students" },
+            { v: compact(stats.publishedCourses), l: "Published courses" },
+            { v: compact(stats.instructors), l: "Instructors" },
+            { v: compact(stats.lessonsCompleted), l: "Lessons completed" },
           ].map((s, i) => (
             <div
               key={s.l}
@@ -283,28 +288,6 @@ function Home() {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="mx-auto max-w-[1240px] px-6 py-16 lg:py-20">
-        <SectionHeading eyebrow="05 / The studio" title="What students say" />
-        <div className="grid gap-5 md:grid-cols-3">
-          {reviews.slice(0, 3).map((r) => (
-            <Card key={r.id} className="flex flex-col p-6">
-              <Rating value={r.rating} showValue={false} />
-              <p className="mt-4 flex-1 leading-relaxed text-pretty text-muted-foreground">
-                “{r.body}”
-              </p>
-              <div className="mt-6 flex items-center gap-3">
-                <Avatar initials={r.initials} />
-                <div>
-                  <p className="text-sm font-medium">{r.author}</p>
-                  <p className="font-mono text-[11px] text-muted-foreground">{r.role}</p>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </section>
-
       {/* Instructor CTA */}
       <section className="mx-auto max-w-[1240px] px-6 pb-20">
         <Card className="glow flex flex-col items-start gap-8 p-8 lg:flex-row lg:items-center lg:justify-between lg:p-12">
@@ -314,12 +297,13 @@ function Home() {
               Your craft is worth teaching properly.
             </h2>
             <p className="mt-4 leading-relaxed text-muted-foreground">
-              Learnora instructors keep 85% of every enrolment, own their audience, and get an
-              editorial team that helps shape the curriculum before a single lesson is recorded.
+              Learnora instructors earn a transparent share of every enrolment, own their audience,
+              and get an editorial team that helps shape the curriculum before a single lesson is
+              recorded.
             </p>
             <div className="mt-6 flex flex-wrap gap-6 font-mono text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
               <span className="flex items-center gap-2">
-                <Trophy size={14} className="text-brand-soft" /> 85% revenue share
+                <Trophy size={14} className="text-brand-soft" /> Transparent revenue share
               </span>
               <span className="flex items-center gap-2">
                 <UserPlus size={14} className="text-brand-soft" /> 112 instructors

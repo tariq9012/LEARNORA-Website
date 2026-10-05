@@ -8,7 +8,10 @@ export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
       { title: "Contact Learnora" },
-      { name: "description", content: "Reach the Learnora support, instructor and partnerships teams." },
+      {
+        name: "description",
+        content: "Reach the Learnora support, instructor and partnerships teams.",
+      },
       { property: "og:title", content: "Contact Learnora" },
       { property: "og:description", content: "Support, instructor and partnership enquiries." },
     ],
@@ -17,9 +20,24 @@ export const Route = createFileRoute("/contact")({
 });
 
 const channels = [
-  { icon: MessageSquare, title: "Student support", body: "Enrolments, refunds, certificates and account issues.", detail: "Replies within one working day" },
-  { icon: Mail, title: "Instructor team", body: "Course proposals, production help and payouts.", detail: "Replies within two working days" },
-  { icon: Building2, title: "Teams and partnerships", body: "Company accounts, licensing and co-branded programmes.", detail: "Replies within three working days" },
+  {
+    icon: MessageSquare,
+    title: "Student support",
+    body: "Enrolments, refunds, certificates and account issues.",
+    detail: "Replies within one working day",
+  },
+  {
+    icon: Mail,
+    title: "Instructor team",
+    body: "Course proposals, production help and payouts.",
+    detail: "Replies within two working days",
+  },
+  {
+    icon: Building2,
+    title: "Teams and partnerships",
+    body: "Company accounts, licensing and co-branded programmes.",
+    detail: "Replies within three working days",
+  },
 ];
 
 function ContactPage() {
@@ -40,8 +58,8 @@ function ContactPage() {
               <CheckCircle2 size={28} className="mx-auto text-good" />
               <h2 className="mt-4 font-display text-2xl tracking-tight">Message received</h2>
               <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-                Thanks — we have your enquiry and will reply to the address you gave. No message is actually sent in
-                this preview build.
+                Thanks — we have your enquiry and will reply to the address you gave. No message is
+                actually sent in this preview build.
               </p>
               <Button variant="outline" className="mt-6" onClick={() => setSent(false)}>
                 Send another
@@ -72,7 +90,11 @@ function ContactPage() {
                   <option>Something else</option>
                 </Select>
               </FormField>
-              <FormField label="Message" htmlFor="c-body" hint="Include your course name if the question is course-specific.">
+              <FormField
+                label="Message"
+                htmlFor="c-body"
+                hint="Include your course name if the question is course-specific."
+              >
                 <Textarea id="c-body" required placeholder="How can we help?" />
               </FormField>
               <Button type="submit" size="lg">
@@ -88,7 +110,9 @@ function ContactPage() {
               <Icon size={18} className="text-brand-soft" />
               <h3 className="mt-3 font-medium">{title}</h3>
               <p className="mt-1 text-sm text-muted-foreground">{body}</p>
-              <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">{detail}</p>
+              <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+                {detail}
+              </p>
             </Card>
           ))}
         </div>

@@ -40,3 +40,12 @@ export function createInstructor(data: { name: string; email: string; passwordHa
 export function updatePasswordHash(userId: string, passwordHash: string) {
   return prisma.user.update({ where: { id: userId }, data: { passwordHash } });
 }
+
+export function updateUserName(userId: string, name: string) {
+  return prisma.user.update({ where: { id: userId }, data: { name } });
+}
+
+/** Points the user at a new avatar Asset, or clears it (pass null). Never touches the legacy `avatar` URL column. */
+export function updateAvatarAsset(userId: string, avatarAssetId: string | null) {
+  return prisma.user.update({ where: { id: userId }, data: { avatarAssetId } });
+}

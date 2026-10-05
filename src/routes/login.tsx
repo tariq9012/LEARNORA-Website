@@ -1,3 +1,4 @@
+import { sanitizeInternalPath } from "@/lib/safe-path";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
@@ -70,7 +71,10 @@ function LoginPage() {
             // invalidate so it re-runs and the whole app sees the new
             // logged-in state (navbar, guards) before we navigate.
             await router.invalidate();
-            await navigate({ to: redirectTo || roleHomePath(result.user.role) });
+            // Only same-origin absolute paths are followed (open-redirect guard).
+            await navigate({
+              to: sanitizeInternalPath(redirectTo) ?? roleHomePath(result.user.role),
+            });
           } catch {
             setError("Something went wrong. Please try again.");
           } finally {

@@ -8,9 +8,15 @@ export const Route = createFileRoute("/help")({
   head: () => ({
     meta: [
       { title: "Help centre — Learnora" },
-      { name: "description", content: "Answers on enrolment, refunds, certificates, accounts and instructor payouts." },
+      {
+        name: "description",
+        content: "Answers on enrolment, refunds, certificates, accounts and instructor payouts.",
+      },
       { property: "og:title", content: "Help centre — Learnora" },
-      { property: "og:description", content: "Answers to the questions students and instructors ask most." },
+      {
+        property: "og:description",
+        content: "Answers to the questions students and instructors ask most.",
+      },
     ],
   }),
   component: HelpPage,
@@ -35,7 +41,7 @@ const faqs = [
   },
   {
     q: "How do instructor payouts work?",
-    a: "Instructors receive 85% of net revenue, paid monthly in arrears with an itemised statement covering enrolments, refunds and coupon usage.",
+    a: "Every paid enrolment creates an earning for the instructor. Once the available balance reaches the minimum payout, the instructor requests a payout from the Earnings page and an admin reviews it. Refunded sales are reversed.",
   },
   {
     q: "Do you offer team or company accounts?",
@@ -68,10 +74,15 @@ function HelpPage() {
                   className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-panel-2/60"
                 >
                   <span className="flex-1 font-medium">{f.q}</span>
-                  <ChevronDown size={16} className={`text-brand-soft transition-transform ${expanded ? "" : "-rotate-90"}`} />
+                  <ChevronDown
+                    size={16}
+                    className={`text-brand-soft transition-transform ${expanded ? "" : "-rotate-90"}`}
+                  />
                 </button>
                 {expanded && (
-                  <p className="border-t border-line px-5 py-4 text-sm leading-relaxed text-muted-foreground">{f.a}</p>
+                  <p className="border-t border-line px-5 py-4 text-sm leading-relaxed text-muted-foreground">
+                    {f.a}
+                  </p>
                 )}
               </Card>
             );
@@ -81,7 +92,9 @@ function HelpPage() {
         <Card className="mt-10 flex flex-wrap items-center justify-between gap-4 p-6">
           <div>
             <h2 className="font-display text-lg tracking-tight">Still stuck?</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Send us the details and we will pick it up from there.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Send us the details and we will pick it up from there.
+            </p>
           </div>
           <Link to="/contact">
             <Button>Contact support</Button>

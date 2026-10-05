@@ -61,7 +61,9 @@ export function SiteFooter() {
 
         {groups.map((g) => (
           <div key={g.title}>
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{g.title}</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              {g.title}
+            </p>
             <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
               {g.links.map((l) => (
                 <li key={l.label}>
@@ -77,7 +79,9 @@ export function SiteFooter() {
       <div className="border-t border-line">
         <div className="mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-2 px-6 py-5 text-xs text-muted-foreground">
           <span>© 2026 Learnora</span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em]">Crafted for the curious</span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em]">
+            Crafted for the curious
+          </span>
         </div>
       </div>
     </footer>

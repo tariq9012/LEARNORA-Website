@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Check, X } from "lucide-react";
 import { DashboardLayout, DashboardHeader } from "@/components/layout/DashboardLayout";
 import { Badge, Button, Card, EmptyState, Modal } from "@/components/ui/kit";
-import { currency } from "@/data/mock";
 import {
   approveCourseFn,
   getAdminCourseReviewFn,
@@ -11,6 +10,7 @@ import {
   rejectCourseFn,
 } from "@/server/functions/admin-course";
 import type { AdminCourseReviewDTO } from "@/server/dto/admin-course";
+import { formatPrice } from "@/lib/format";
 
 export const Route = createFileRoute("/admin/course-approval")({
   loader: async () => {
@@ -103,7 +103,7 @@ function CourseApproval() {
                   <p className="mt-1.5 text-sm text-muted-foreground">{c.subtitle}</p>
                   <p className="mt-3 font-mono text-[11px] text-muted-foreground">
                     {c.instructorName} · {c.category} · {c.level} · {c.totalDuration} ·{" "}
-                    {c.price === 0 ? "Free" : currency(c.price)}
+                    {c.price === 0 ? "Free" : formatPrice(c.price)}
                     {c.submittedAt && <> · submitted {c.submittedAt}</>}
                   </p>
                   {c.instructorApprovalStatus !== "APPROVED" && (

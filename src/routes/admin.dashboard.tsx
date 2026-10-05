@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BookOpen, GraduationCap, Users, Wallet } from "lucide-react";
+import { Banknote, BookOpen, GraduationCap, ShieldCheck, Undo2, Users, Wallet } from "lucide-react";
 import { DashboardLayout, DashboardHeader } from "@/components/layout/DashboardLayout";
 import {
   Button,
@@ -10,13 +10,19 @@ import {
   StatusBadge,
 } from "@/components/ui/kit";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
-import { compact, currency, payments, platformStats, type Payment } from "@/data/mock";
-import { getModerationCountsFn, getPendingCoursesFn } from "@/server/functions/admin-course";
+import { compact, formatMoney, formatShortDate } from "@/lib/format";
+import { getAdminDashboardFn, getAdminRecentPaymentsFn } from "@/server/functions/admin-dashboard";
+import { getAdminFinanceStatsFn } from "@/server/functions/admin-finance";
+import type { AdminRecentPaymentDTO } from "@/server/dto/admin";
 
 export const Route = createFileRoute("/admin/dashboard")({
   loader: async () => {
-    const [counts, pending] = await Promise.all([getModerationCountsFn(), getPendingCoursesFn()]);
-    return { counts, pending };
+    const [dashboard, recentPayments, finance] = await Promise.all([
+      getAdminDashboardFn(),
+      getAdminRecentPaymentsFn(),
+      getAdminFinanceStatsFn(),
+    ]);
+    return { dashboard, recentPayments, finance };
   },
   head: () => ({
     meta: [
@@ -32,15 +38,22 @@ export const Route = createFileRoute("/admin/dashboard")({
   component: AdminDashboard,
 });
 
+const STATUS_LABEL: Record<AdminRecentPaymentDTO["status"], string> = {
+  PENDING: "Pending",
+  PAID: "Paid",
+  FAILED: "Failed",
+  REFUNDED: "Refunded",
+  PARTIALLY_REFUNDED: "Partially refunded",
+};
+
 function AdminDashboard() {
-  const { counts, pending } = Route.useLoaderData();
-  const totalRealCourses = counts.pendingReview + counts.published + counts.rejected;
+  const { dashboard, recentPayments, finance } = Route.useLoaderData();
 
   return (
     <DashboardLayout role="admin">
       <DashboardHeader
         title="Platform overview"
-        description="Course moderation counts below are live; student/instructor/revenue figures are illustrative pending a later phase."
+        description="Every figure below comes straight from the database — nothing here is illustrative."
         action={
           <Link to="/admin/reports">
             <Button variant="outline">View reports</Button>
@@ -50,43 +63,75 @@ function AdminDashboard() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          label="Total students"
-          value={compact(platformStats.students)}
-          hint="Illustrative"
+          label="Active students"
+          value={compact(dashboard.activeStudents)}
+          hint={`${compact(dashboard.totalUsers)} total accounts`}
           icon={GraduationCap}
         />
         <StatCard
           label="Instructors"
-          value={platformStats.instructors}
-          hint="Illustrative"
+          value={compact(dashboard.instructors)}
+          hint={
+            dashboard.pendingInstructorApprovals > 0
+              ? `${dashboard.pendingInstructorApprovals} pending approval`
+              : "All reviewed"
+          }
           icon={Users}
         />
         <StatCard
           label="Courses"
-          value={totalRealCourses}
-          hint={`${counts.pendingReview} awaiting review`}
+          value={compact(dashboard.totalCourses)}
+          hint={`${dashboard.publishedCourses} published · ${dashboard.pendingCourseReviews} awaiting review`}
           icon={BookOpen}
         />
         <StatCard
-          label="Revenue (lifetime)"
-          value={currency(platformStats.revenue)}
-          hint="Illustrative"
+          label="Platform revenue"
+          value={formatMoney(dashboard.platformRevenue, dashboard.currency)}
+          hint={`${dashboard.paidPayments} paid orders, net of refunds`}
           icon={Wallet}
+        />
+      </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Active enrollments"
+          value={compact(dashboard.activeEnrollments)}
+          hint="Currently entitled"
+          icon={ShieldCheck}
+        />
+        <StatCard
+          label="Completed enrollments"
+          value={compact(dashboard.completedEnrollments)}
+          hint="Finished a course"
+          icon={GraduationCap}
+        />
+        <StatCard
+          label="Pending payouts"
+          value={finance.pendingPayoutCount}
+          hint={`${formatMoney(finance.pendingPayoutAmount, finance.currency)} awaiting`}
+          icon={Banknote}
+        />
+        <StatCard
+          label="Refunds"
+          value={dashboard.processedRefunds}
+          hint={`${formatMoney(dashboard.refundedAmount, dashboard.currency)} refunded`}
+          icon={Undo2}
         />
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_340px]">
         <RevenueChart
           title="Platform revenue"
-          subtitle="Illustrative — real payments are a later phase"
+          subtitle="Last 6 months · PAID payments, net of refunds"
+          data={dashboard.revenueByMonth}
         />
         <Card className="p-5">
           <h3 className="font-display text-lg tracking-tight">Awaiting approval</h3>
           <div className="mt-4 space-y-3">
-            {pending.length === 0 && (
+            {dashboard.pendingCourses.length === 0 && (
               <p className="text-sm text-muted-foreground">Nothing in the queue.</p>
             )}
-            {pending.slice(0, 5).map((c) => (
+            {dashboard.pendingCourses.map((c) => (
               <div key={c.id} className="rounded-xl bg-panel-2 p-3 ring-1 ring-line">
                 <p className="text-sm font-medium">{c.title}</p>
                 <p className="mt-1 font-mono text-[10px] text-muted-foreground">
@@ -114,24 +159,28 @@ function AdminDashboard() {
           }
           className="mb-6"
         />
-        <DataTable<Payment>
+        <DataTable<AdminRecentPaymentDTO>
           caption="Latest transactions"
-          rows={payments}
+          rows={recentPayments}
           columns={[
             {
-              key: "id",
+              key: "orderNumber",
               header: "Transaction",
-              render: (p) => <span className="font-mono text-xs">{p.id}</span>,
+              render: (p) => <span className="font-mono text-xs">{p.orderNumber}</span>,
             },
-            { key: "student", header: "Student", render: (p) => p.student },
-            { key: "course", header: "Course", render: (p) => p.course },
-            { key: "date", header: "Date", render: (p) => p.date },
-            { key: "status", header: "Status", render: (p) => <StatusBadge status={p.status} /> },
+            { key: "student", header: "Student", render: (p) => p.studentName },
+            { key: "course", header: "Course", render: (p) => p.courseTitle },
+            { key: "date", header: "Date", render: (p) => formatShortDate(p.createdAt) },
+            {
+              key: "status",
+              header: "Status",
+              render: (p) => <StatusBadge status={STATUS_LABEL[p.status]} />,
+            },
             {
               key: "amount",
               header: "Amount",
               className: "text-right",
-              render: (p) => currency(p.amount),
+              render: (p) => formatMoney(p.amount, p.currency),
             },
           ]}
         />

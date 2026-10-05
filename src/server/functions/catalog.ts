@@ -4,6 +4,7 @@ import { browseCourses, getCourseBySlug, getFeaturedCourses } from "../services/
 import type { CourseSort } from "../repositories/course-repository";
 import { listCategories, getCategoryBySlug } from "../services/category-service";
 import { getInstructorProfile } from "../services/instructor-service";
+import { getFaculty, getPlatformStats } from "../services/platform-stats-service";
 import { getReviewsForCourse, getRatingBreakdown } from "../services/review-service";
 
 export type BrowseCoursesInput = {
@@ -53,3 +54,10 @@ export const getCategoryBySlugFn = createServerFn({ method: "GET" })
 export const getInstructorProfileFn = createServerFn({ method: "GET" })
   .validator((data: { instructorId: string }) => data)
   .handler(async ({ data }) => getInstructorProfile(data.instructorId));
+
+/** Public, aggregate-only marketing numbers computed live from the database. */
+export const getPlatformStatsFn = createServerFn({ method: "GET" }).handler(async () =>
+  getPlatformStats(),
+);
+
+export const getFacultyFn = createServerFn({ method: "GET" }).handler(async () => getFaculty(4));

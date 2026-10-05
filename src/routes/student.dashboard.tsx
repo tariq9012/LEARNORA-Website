@@ -1,24 +1,56 @@
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
-import { BookOpen, CheckCircle2, Clock3, Award, ArrowRight } from "lucide-react";
+import {
+  BookOpen,
+  CheckCircle2,
+  Clock3,
+  Award,
+  ArrowRight,
+  Bell,
+  MessageSquare,
+} from "lucide-react";
 import { DashboardLayout, DashboardHeader } from "@/components/layout/DashboardLayout";
 import { Button, Card, ProgressBar, SectionHeading, StatCard } from "@/components/ui/kit";
 import { CourseCard } from "@/components/course/CourseCard";
 import { categoryImage } from "@/lib/course-images";
-import { activity } from "@/data/mock";
+import { formatRelativeTime } from "@/lib/format";
 import { getStudentDashboardLearningFn } from "@/server/functions/learning";
 import { getCoursesFn } from "@/server/functions/catalog";
 import { getMyCertificatesFn } from "@/server/functions/certificate";
+import { getUnreadCountsFn } from "@/server/functions/notifications";
 
 export const Route = createFileRoute("/student/dashboard")({
   loader: async () => {
-    const [learning, recommendedPage, certificates] = await Promise.all([
+    const [learning, recommendedPage, certificates, unread] = await Promise.all([
       getStudentDashboardLearningFn(),
       getCoursesFn({ data: { sort: "popular", page: 1, pageSize: 9 } }),
       getMyCertificatesFn(),
+      getUnreadCountsFn(),
     ]);
     const enrolledSlugs = new Set(learning.allEnrollments.map((e) => e.courseSlug));
     const recommended = recommendedPage.items.filter((c) => !enrolledSlugs.has(c.id)).slice(0, 3);
-    return { learning, recommended, certificateCount: certificates.length };
+    // Real activity only: enrolments, completions and certificates the student actually has.
+    const activity = [
+      ...learning.allEnrollments.map((e) => ({
+        id: `enrolled-${e.enrollmentId}`,
+        at: e.enrolledAt,
+        text: `Enrolled in ${e.title}`,
+      })),
+      ...learning.allEnrollments
+        .filter((e) => e.completedAt)
+        .map((e) => ({
+          id: `completed-${e.enrollmentId}`,
+          at: e.completedAt as string,
+          text: `Completed ${e.title}`,
+        })),
+      ...certificates.map((c) => ({
+        id: `cert-${c.id}`,
+        at: c.issuedAt,
+        text: `Earned a certificate for ${c.courseTitle}`,
+      })),
+    ]
+      .sort((a, b) => b.at.localeCompare(a.at))
+      .slice(0, 5);
+    return { learning, recommended, certificateCount: certificates.length, unread, activity };
   },
   head: () => ({
     meta: [
@@ -35,7 +67,7 @@ export const Route = createFileRoute("/student/dashboard")({
 });
 
 function StudentDashboard() {
-  const { learning, recommended, certificateCount } = Route.useLoaderData();
+  const { learning, recommended, certificateCount, unread, activity } = Route.useLoaderData();
   const { user } = useRouteContext({ from: "__root__" });
   const firstName = user?.name.split(" ")[0] ?? "there";
 
@@ -56,6 +88,15 @@ function StudentDashboard() {
         <StatCard label="Courses completed" value={learning.completedCount} icon={CheckCircle2} />
         <StatCard label="Learning hours" value="—" hint="Coming in a later phase" icon={Clock3} />
         <StatCard label="Certificates" value={certificateCount} icon={Award} />
+      </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <Link to="/student/notifications">
+          <StatCard label="Unread notifications" value={unread.notifications} icon={Bell} />
+        </Link>
+        <Link to="/student/messages">
+          <StatCard label="Unread messages" value={unread.messages} icon={MessageSquare} />
+        </Link>
       </div>
 
       <section className="mt-12">
@@ -151,12 +192,20 @@ function StudentDashboard() {
         <section>
           <SectionHeading eyebrow="Activity" title="Recent activity" className="mb-6" />
           <Card className="divide-y divide-line">
-            {activity.map((a) => (
-              <div key={a.id} className="p-4">
-                <p className="text-sm leading-relaxed">{a.text}</p>
-                <p className="mt-1 font-mono text-[10px] text-muted-foreground">{a.time}</p>
-              </div>
-            ))}
+            {activity.length === 0 ? (
+              <p className="p-4 text-sm text-muted-foreground">
+                Nothing yet — enrol in a course and your activity will show up here.
+              </p>
+            ) : (
+              activity.map((a) => (
+                <div key={a.id} className="p-4">
+                  <p className="text-sm leading-relaxed">{a.text}</p>
+                  <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+                    {formatRelativeTime(a.at)}
+                  </p>
+                </div>
+              ))
+            )}
           </Card>
         </section>
       </div>

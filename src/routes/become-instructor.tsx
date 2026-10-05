@@ -9,20 +9,39 @@ export const Route = createFileRoute("/become-instructor")({
       { title: "Teach on Learnora — become an instructor" },
       {
         name: "description",
-        content: "Keep 85% of every enrolment, work with an editorial team, and reach 10,000+ engaged learners.",
+        content: "Earn a transparent share of every enrolment and work with an editorial team.",
       },
       { property: "og:title", content: "Teach on Learnora" },
-      { property: "og:description", content: "Keep 85% of every enrolment and work with a real editorial team." },
+      {
+        property: "og:description",
+        content: "Earn a transparent share of every enrolment.",
+      },
     ],
   }),
   component: BecomeInstructor,
 });
 
 const perks = [
-  { icon: Wallet, title: "85% revenue share", body: "Paid monthly, with a transparent statement for every enrolment." },
-  { icon: PenTool, title: "Editorial support", body: "A subject editor shapes your outline before you record anything." },
-  { icon: Users, title: "An engaged audience", body: "10,000+ students who finish courses rather than collect them." },
-  { icon: LifeBuoy, title: "Production help", body: "Audio review, caption editing and thumbnail design included." },
+  {
+    icon: Wallet,
+    title: "Transparent revenue share",
+    body: "Every sale is recorded as an earning you can see, and you request payouts once your balance passes the minimum.",
+  },
+  {
+    icon: PenTool,
+    title: "Editorial support",
+    body: "A subject editor shapes your outline before you record anything.",
+  },
+  {
+    icon: Users,
+    title: "An engaged audience",
+    body: "10,000+ students who finish courses rather than collect them.",
+  },
+  {
+    icon: LifeBuoy,
+    title: "Production help",
+    body: "Audio review, caption editing and thumbnail design included.",
+  },
 ];
 
 const steps = [
@@ -73,7 +92,9 @@ function BecomeInstructor() {
           <ol className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {steps.map((s) => (
               <li key={s.n} className="rounded-xl bg-panel p-5 ring-1 ring-line">
-                <span className="font-mono text-[11px] tracking-[0.2em] text-brand-soft">{s.n}</span>
+                <span className="font-mono text-[11px] tracking-[0.2em] text-brand-soft">
+                  {s.n}
+                </span>
                 <h3 className="mt-3 text-base font-medium">{s.t}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{s.b}</p>
               </li>
@@ -85,9 +106,12 @@ function BecomeInstructor() {
       <section className="mx-auto max-w-[1240px] px-6 py-16">
         <Card className="glow flex flex-col items-start gap-6 p-8 lg:flex-row lg:items-center lg:justify-between lg:p-12">
           <div>
-            <h2 className="font-display text-3xl tracking-tight">Ready to put your first outline together?</h2>
+            <h2 className="font-display text-3xl tracking-tight">
+              Ready to put your first outline together?
+            </h2>
             <p className="mt-3 max-w-[52ch] text-muted-foreground">
-              Applications are reviewed weekly. Most instructors publish their first course within ten weeks.
+              Applications are reviewed weekly. Most instructors publish their first course within
+              ten weeks.
             </p>
           </div>
           <Link to="/register">

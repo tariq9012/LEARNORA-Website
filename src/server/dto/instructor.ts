@@ -10,6 +10,8 @@ export type InstructorSummaryDTO = {
   courses: number;
   reviews: number;
   bio: string;
-  /** No social links are collected yet — always empty until that's added. */
+  /** Real uploaded avatar (Phase 13) if set, else the legacy avatar URL, else null — never a placeholder image URL. */
+  avatarUrl: string | null;
+  /** Built from InstructorProfile.website + socialLinks (Phase 13). Empty until the instructor sets either. */
   social: { label: string; href: string }[];
 };

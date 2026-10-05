@@ -12,7 +12,7 @@ import {
 } from "../services/checkout-service";
 import { PaymentError, confirmTestPayment } from "../services/payment-service";
 import type {
-  AdminOrderDTO,
+  AdminOrderListDTO,
   CheckoutDTO,
   OrderSummaryDTO,
   PurchaseHistoryItemDTO,
@@ -102,9 +102,9 @@ export const getMyPurchasesFn = createServerFn({ method: "GET" }).handler(
 // Admin
 // ---------------------------------------------------------------------------
 
-export const getAdminOrdersFn = createServerFn({ method: "GET" }).handler(
-  async (): Promise<AdminOrderDTO[]> => {
-    await requireAdmin();
-    return getAdminOrders();
-  },
-);
+export const getAdminOrdersFn = createServerFn({ method: "GET" })
+  .validator((data: unknown) => data ?? {})
+  .handler(async ({ data }): Promise<AdminOrderListDTO> => {
+    const admin = await requireAdmin();
+    return getAdminOrders(admin, data);
+  });

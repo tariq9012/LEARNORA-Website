@@ -1,4 +1,5 @@
-import { getSessionUser } from "./session";
+import { assertValidCsrfToken } from "./csrf";
+import { getRawSessionToken, getSessionUser } from "./session";
 import { toSafeUser, type SafeUser } from "./types";
 
 export class UnauthorizedError extends Error {
@@ -43,6 +44,21 @@ export async function requireAnyRole(roles: ReadonlyArray<SafeUser["role"]>): Pr
 export const requireStudent = () => requireRole("STUDENT");
 export const requireInstructor = () => requireRole("INSTRUCTOR");
 export const requireAdmin = () => requireRole("ADMIN");
+
+/**
+ * Same as requireCurrentUser(), plus verifies the `X-CSRF-Token` header
+ * (see csrf.ts). Use this — never the plain version — for state-changing
+ * raw routes reachable by ANY authenticated role (currently: the account
+ * avatar upload/remove route). requireApprovedInstructorWithCsrf() covers
+ * the instructor-only media routes; this is the role-agnostic equivalent.
+ */
+export async function requireCurrentUserWithCsrf(): Promise<SafeUser> {
+  const user = await requireCurrentUser();
+  const rawToken = getRawSessionToken();
+  if (!rawToken) throw new UnauthorizedError();
+  assertValidCsrfToken(rawToken);
+  return user;
+}
 
 /**
  * Enforces that the current user owns a resource (or is an admin).

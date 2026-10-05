@@ -32,10 +32,16 @@ import { Route as AdminCoursesRouteImport } from './routes/admin.courses'
 import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
 import { Route as AdminEnrollmentsRouteImport } from './routes/admin.enrollments'
 import { Route as AdminInstructorsRouteImport } from './routes/admin.instructors'
+import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminPaymentsRouteImport } from './routes/admin.payments'
+import { Route as AdminPayoutsRouteImport } from './routes/admin.payouts'
+import { Route as AdminReportsRouteImport } from './routes/admin.reports'
 import { Route as AdminReviewsRouteImport } from './routes/admin.reviews'
 import { Route as AdminStudentsRouteImport } from './routes/admin.students'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as ApiEventsRouteImport } from './routes/api.events'
+import { Route as ApiHealthRouteImport } from './routes/api.health'
+import { Route as ApiReadyRouteImport } from './routes/api.ready'
 import { Route as CheckoutCourseIdRouteImport } from './routes/checkout.$courseId'
 import { Route as CoursesIndexRouteImport } from './routes/courses.index'
 import { Route as CoursesCourseIdRouteImport } from './routes/courses.$courseId'
@@ -44,6 +50,7 @@ import { Route as InstructorAnalyticsRouteImport } from './routes/instructor.ana
 import { Route as InstructorDashboardRouteImport } from './routes/instructor.dashboard'
 import { Route as InstructorEarningsRouteImport } from './routes/instructor.earnings'
 import { Route as InstructorMessagesRouteImport } from './routes/instructor.messages'
+import { Route as InstructorNotificationsRouteImport } from './routes/instructor.notifications'
 import { Route as InstructorProfileRouteImport } from './routes/instructor.profile'
 import { Route as InstructorReviewsRouteImport } from './routes/instructor.reviews'
 import { Route as InstructorSettingsRouteImport } from './routes/instructor.settings'
@@ -58,6 +65,10 @@ import { Route as StudentProfileRouteImport } from './routes/student.profile'
 import { Route as StudentPurchasesRouteImport } from './routes/student.purchases'
 import { Route as StudentSettingsRouteImport } from './routes/student.settings'
 import { Route as StudentWishlistRouteImport } from './routes/student.wishlist'
+import { Route as ApiAccountAvatarRouteImport } from './routes/api.account.avatar'
+import { Route as ApiCronCleanupUploadsRouteImport } from './routes/api.cron.cleanup-uploads'
+import { Route as ApiMediaUploadFinalizeRouteImport } from './routes/api.media.upload-finalize'
+import { Route as ApiMediaUploadIntentRouteImport } from './routes/api.media.upload-intent'
 import { Route as CertificatesVerifyIndexRouteImport } from './routes/certificates.verify.index'
 import { Route as CertificatesVerifyCodeRouteImport } from './routes/certificates.verify.$code'
 import { Route as CheckoutSuccessOrderIdRouteImport } from './routes/checkout.success.$orderId'
@@ -191,9 +202,24 @@ const AdminInstructorsRoute = AdminInstructorsRouteImport.update({
   path: '/instructors',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminPaymentsRoute = AdminPaymentsRouteImport.update({
   id: '/payments',
   path: '/payments',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPayoutsRoute = AdminPayoutsRouteImport.update({
+  id: '/payouts',
+  path: '/payouts',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminReportsRoute = AdminReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminReviewsRoute = AdminReviewsRouteImport.update({
@@ -210,6 +236,21 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => AdminRoute,
+} as any)
+const ApiEventsRoute = ApiEventsRouteImport.update({
+  id: '/api/events',
+  path: '/api/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReadyRoute = ApiReadyRouteImport.update({
+  id: '/api/ready',
+  path: '/api/ready',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const CheckoutCourseIdRoute = CheckoutCourseIdRouteImport.update({
   id: '/$courseId',
@@ -249,6 +290,11 @@ const InstructorEarningsRoute = InstructorEarningsRouteImport.update({
 const InstructorMessagesRoute = InstructorMessagesRouteImport.update({
   id: '/messages',
   path: '/messages',
+  getParentRoute: () => InstructorRoute,
+} as any)
+const InstructorNotificationsRoute = InstructorNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => InstructorRoute,
 } as any)
 const InstructorProfileRoute = InstructorProfileRouteImport.update({
@@ -320,6 +366,26 @@ const StudentWishlistRoute = StudentWishlistRouteImport.update({
   id: '/wishlist',
   path: '/wishlist',
   getParentRoute: () => StudentRoute,
+} as any)
+const ApiAccountAvatarRoute = ApiAccountAvatarRouteImport.update({
+  id: '/api/account/avatar',
+  path: '/api/account/avatar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronCleanupUploadsRoute = ApiCronCleanupUploadsRouteImport.update({
+  id: '/api/cron/cleanup-uploads',
+  path: '/api/cron/cleanup-uploads',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMediaUploadFinalizeRoute = ApiMediaUploadFinalizeRouteImport.update({
+  id: '/api/media/upload-finalize',
+  path: '/api/media/upload-finalize',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMediaUploadIntentRoute = ApiMediaUploadIntentRouteImport.update({
+  id: '/api/media/upload-intent',
+  path: '/api/media/upload-intent',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const CertificatesVerifyIndexRoute = CertificatesVerifyIndexRouteImport.update({
   id: '/certificates/verify/',
@@ -438,16 +504,23 @@ export interface FileRoutesByFullPath {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/enrollments': typeof AdminEnrollmentsRoute
   '/admin/instructors': typeof AdminInstructorsRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/payments': typeof AdminPaymentsRoute
+  '/admin/payouts': typeof AdminPayoutsRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/events': typeof ApiEventsRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/ready': typeof ApiReadyRoute
   '/checkout/$courseId': typeof CheckoutCourseIdRoute
   '/courses/$courseId': typeof CoursesCourseIdRoute
   '/instructor/analytics': typeof InstructorAnalyticsRoute
   '/instructor/dashboard': typeof InstructorDashboardRoute
   '/instructor/earnings': typeof InstructorEarningsRoute
   '/instructor/messages': typeof InstructorMessagesRoute
+  '/instructor/notifications': typeof InstructorNotificationsRoute
   '/instructor/profile': typeof InstructorProfileRoute
   '/instructor/reviews': typeof InstructorReviewsRoute
   '/instructor/settings': typeof InstructorSettingsRoute
@@ -465,6 +538,10 @@ export interface FileRoutesByFullPath {
   '/courses/': typeof CoursesIndexRoute
   '/instructor/': typeof InstructorIndexRoute
   '/student/': typeof StudentIndexRoute
+  '/api/account/avatar': typeof ApiAccountAvatarRoute
+  '/api/cron/cleanup-uploads': typeof ApiCronCleanupUploadsRoute
+  '/api/media/upload-finalize': typeof ApiMediaUploadFinalizeRoute
+  '/api/media/upload-intent': typeof ApiMediaUploadIntentRoute
   '/certificates/verify/$code': typeof CertificatesVerifyCodeRoute
   '/checkout/success/$orderId': typeof CheckoutSuccessOrderIdRoute
   '/instructor/courses/$courseId': typeof InstructorCoursesCourseIdRoute
@@ -503,16 +580,23 @@ export interface FileRoutesByTo {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/enrollments': typeof AdminEnrollmentsRoute
   '/admin/instructors': typeof AdminInstructorsRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/payments': typeof AdminPaymentsRoute
+  '/admin/payouts': typeof AdminPayoutsRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/events': typeof ApiEventsRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/ready': typeof ApiReadyRoute
   '/checkout/$courseId': typeof CheckoutCourseIdRoute
   '/courses/$courseId': typeof CoursesCourseIdRoute
   '/instructor/analytics': typeof InstructorAnalyticsRoute
   '/instructor/dashboard': typeof InstructorDashboardRoute
   '/instructor/earnings': typeof InstructorEarningsRoute
   '/instructor/messages': typeof InstructorMessagesRoute
+  '/instructor/notifications': typeof InstructorNotificationsRoute
   '/instructor/profile': typeof InstructorProfileRoute
   '/instructor/reviews': typeof InstructorReviewsRoute
   '/instructor/settings': typeof InstructorSettingsRoute
@@ -530,6 +614,10 @@ export interface FileRoutesByTo {
   '/courses': typeof CoursesIndexRoute
   '/instructor': typeof InstructorIndexRoute
   '/student': typeof StudentIndexRoute
+  '/api/account/avatar': typeof ApiAccountAvatarRoute
+  '/api/cron/cleanup-uploads': typeof ApiCronCleanupUploadsRoute
+  '/api/media/upload-finalize': typeof ApiMediaUploadFinalizeRoute
+  '/api/media/upload-intent': typeof ApiMediaUploadIntentRoute
   '/certificates/verify/$code': typeof CertificatesVerifyCodeRoute
   '/checkout/success/$orderId': typeof CheckoutSuccessOrderIdRoute
   '/instructor/courses/$courseId': typeof InstructorCoursesCourseIdRoute
@@ -572,16 +660,23 @@ export interface FileRoutesById {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/enrollments': typeof AdminEnrollmentsRoute
   '/admin/instructors': typeof AdminInstructorsRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/payments': typeof AdminPaymentsRoute
+  '/admin/payouts': typeof AdminPayoutsRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/events': typeof ApiEventsRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/ready': typeof ApiReadyRoute
   '/checkout/$courseId': typeof CheckoutCourseIdRoute
   '/courses/$courseId': typeof CoursesCourseIdRoute
   '/instructor/analytics': typeof InstructorAnalyticsRoute
   '/instructor/dashboard': typeof InstructorDashboardRoute
   '/instructor/earnings': typeof InstructorEarningsRoute
   '/instructor/messages': typeof InstructorMessagesRoute
+  '/instructor/notifications': typeof InstructorNotificationsRoute
   '/instructor/profile': typeof InstructorProfileRoute
   '/instructor/reviews': typeof InstructorReviewsRoute
   '/instructor/settings': typeof InstructorSettingsRoute
@@ -599,6 +694,10 @@ export interface FileRoutesById {
   '/courses/': typeof CoursesIndexRoute
   '/instructor/': typeof InstructorIndexRoute
   '/student/': typeof StudentIndexRoute
+  '/api/account/avatar': typeof ApiAccountAvatarRoute
+  '/api/cron/cleanup-uploads': typeof ApiCronCleanupUploadsRoute
+  '/api/media/upload-finalize': typeof ApiMediaUploadFinalizeRoute
+  '/api/media/upload-intent': typeof ApiMediaUploadIntentRoute
   '/certificates/verify/$code': typeof CertificatesVerifyCodeRoute
   '/checkout/success/$orderId': typeof CheckoutSuccessOrderIdRoute
   '/instructor/courses/$courseId': typeof InstructorCoursesCourseIdRoute
@@ -642,16 +741,23 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/admin/enrollments'
     | '/admin/instructors'
+    | '/admin/notifications'
     | '/admin/payments'
+    | '/admin/payouts'
+    | '/admin/reports'
     | '/admin/reviews'
     | '/admin/students'
     | '/admin/users'
+    | '/api/events'
+    | '/api/health'
+    | '/api/ready'
     | '/checkout/$courseId'
     | '/courses/$courseId'
     | '/instructor/analytics'
     | '/instructor/dashboard'
     | '/instructor/earnings'
     | '/instructor/messages'
+    | '/instructor/notifications'
     | '/instructor/profile'
     | '/instructor/reviews'
     | '/instructor/settings'
@@ -669,6 +775,10 @@ export interface FileRouteTypes {
     | '/courses/'
     | '/instructor/'
     | '/student/'
+    | '/api/account/avatar'
+    | '/api/cron/cleanup-uploads'
+    | '/api/media/upload-finalize'
+    | '/api/media/upload-intent'
     | '/certificates/verify/$code'
     | '/checkout/success/$orderId'
     | '/instructor/courses/$courseId'
@@ -707,16 +817,23 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/admin/enrollments'
     | '/admin/instructors'
+    | '/admin/notifications'
     | '/admin/payments'
+    | '/admin/payouts'
+    | '/admin/reports'
     | '/admin/reviews'
     | '/admin/students'
     | '/admin/users'
+    | '/api/events'
+    | '/api/health'
+    | '/api/ready'
     | '/checkout/$courseId'
     | '/courses/$courseId'
     | '/instructor/analytics'
     | '/instructor/dashboard'
     | '/instructor/earnings'
     | '/instructor/messages'
+    | '/instructor/notifications'
     | '/instructor/profile'
     | '/instructor/reviews'
     | '/instructor/settings'
@@ -734,6 +851,10 @@ export interface FileRouteTypes {
     | '/courses'
     | '/instructor'
     | '/student'
+    | '/api/account/avatar'
+    | '/api/cron/cleanup-uploads'
+    | '/api/media/upload-finalize'
+    | '/api/media/upload-intent'
     | '/certificates/verify/$code'
     | '/checkout/success/$orderId'
     | '/instructor/courses/$courseId'
@@ -775,16 +896,23 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/admin/enrollments'
     | '/admin/instructors'
+    | '/admin/notifications'
     | '/admin/payments'
+    | '/admin/payouts'
+    | '/admin/reports'
     | '/admin/reviews'
     | '/admin/students'
     | '/admin/users'
+    | '/api/events'
+    | '/api/health'
+    | '/api/ready'
     | '/checkout/$courseId'
     | '/courses/$courseId'
     | '/instructor/analytics'
     | '/instructor/dashboard'
     | '/instructor/earnings'
     | '/instructor/messages'
+    | '/instructor/notifications'
     | '/instructor/profile'
     | '/instructor/reviews'
     | '/instructor/settings'
@@ -802,6 +930,10 @@ export interface FileRouteTypes {
     | '/courses/'
     | '/instructor/'
     | '/student/'
+    | '/api/account/avatar'
+    | '/api/cron/cleanup-uploads'
+    | '/api/media/upload-finalize'
+    | '/api/media/upload-intent'
     | '/certificates/verify/$code'
     | '/checkout/success/$orderId'
     | '/instructor/courses/$courseId'
@@ -838,9 +970,16 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   StudentRoute: typeof StudentRouteWithChildren
   TermsRoute: typeof TermsRoute
+  ApiEventsRoute: typeof ApiEventsRoute
+  ApiHealthRoute: typeof ApiHealthRoute
+  ApiReadyRoute: typeof ApiReadyRoute
   CoursesCourseIdRoute: typeof CoursesCourseIdRoute
   InstructorsInstructorIdRoute: typeof InstructorsInstructorIdRoute
   CoursesIndexRoute: typeof CoursesIndexRoute
+  ApiAccountAvatarRoute: typeof ApiAccountAvatarRoute
+  ApiCronCleanupUploadsRoute: typeof ApiCronCleanupUploadsRoute
+  ApiMediaUploadFinalizeRoute: typeof ApiMediaUploadFinalizeRoute
+  ApiMediaUploadIntentRoute: typeof ApiMediaUploadIntentRoute
   CertificatesVerifyCodeRoute: typeof CertificatesVerifyCodeRoute
   MediaLessonVideoAssetIdRoute: typeof MediaLessonVideoAssetIdRoute
   MediaPublicAssetIdRoute: typeof MediaPublicAssetIdRoute
@@ -1016,11 +1155,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminInstructorsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/notifications': {
+      id: '/admin/notifications'
+      path: '/notifications'
+      fullPath: '/admin/notifications'
+      preLoaderRoute: typeof AdminNotificationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/payments': {
       id: '/admin/payments'
       path: '/payments'
       fullPath: '/admin/payments'
       preLoaderRoute: typeof AdminPaymentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/payouts': {
+      id: '/admin/payouts'
+      path: '/payouts'
+      fullPath: '/admin/payouts'
+      preLoaderRoute: typeof AdminPayoutsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/reports': {
+      id: '/admin/reports'
+      path: '/reports'
+      fullPath: '/admin/reports'
+      preLoaderRoute: typeof AdminReportsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/reviews': {
@@ -1043,6 +1203,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/users'
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/api/events': {
+      id: '/api/events'
+      path: '/api/events'
+      fullPath: '/api/events'
+      preLoaderRoute: typeof ApiEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ready': {
+      id: '/api/ready'
+      path: '/api/ready'
+      fullPath: '/api/ready'
+      preLoaderRoute: typeof ApiReadyRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/checkout/$courseId': {
       id: '/checkout/$courseId'
@@ -1098,6 +1279,13 @@ declare module '@tanstack/react-router' {
       path: '/messages'
       fullPath: '/instructor/messages'
       preLoaderRoute: typeof InstructorMessagesRouteImport
+      parentRoute: typeof InstructorRoute
+    }
+    '/instructor/notifications': {
+      id: '/instructor/notifications'
+      path: '/notifications'
+      fullPath: '/instructor/notifications'
+      preLoaderRoute: typeof InstructorNotificationsRouteImport
       parentRoute: typeof InstructorRoute
     }
     '/instructor/profile': {
@@ -1197,6 +1385,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/student/wishlist'
       preLoaderRoute: typeof StudentWishlistRouteImport
       parentRoute: typeof StudentRoute
+    }
+    '/api/account/avatar': {
+      id: '/api/account/avatar'
+      path: '/api/account/avatar'
+      fullPath: '/api/account/avatar'
+      preLoaderRoute: typeof ApiAccountAvatarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/cleanup-uploads': {
+      id: '/api/cron/cleanup-uploads'
+      path: '/api/cron/cleanup-uploads'
+      fullPath: '/api/cron/cleanup-uploads'
+      preLoaderRoute: typeof ApiCronCleanupUploadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/media/upload-finalize': {
+      id: '/api/media/upload-finalize'
+      path: '/api/media/upload-finalize'
+      fullPath: '/api/media/upload-finalize'
+      preLoaderRoute: typeof ApiMediaUploadFinalizeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/media/upload-intent': {
+      id: '/api/media/upload-intent'
+      path: '/api/media/upload-intent'
+      fullPath: '/api/media/upload-intent'
+      preLoaderRoute: typeof ApiMediaUploadIntentRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/certificates/verify/': {
       id: '/certificates/verify/'
@@ -1327,7 +1543,10 @@ interface AdminRouteChildren {
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminEnrollmentsRoute: typeof AdminEnrollmentsRoute
   AdminInstructorsRoute: typeof AdminInstructorsRoute
+  AdminNotificationsRoute: typeof AdminNotificationsRoute
   AdminPaymentsRoute: typeof AdminPaymentsRoute
+  AdminPayoutsRoute: typeof AdminPayoutsRoute
+  AdminReportsRoute: typeof AdminReportsRoute
   AdminReviewsRoute: typeof AdminReviewsRoute
   AdminStudentsRoute: typeof AdminStudentsRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -1341,7 +1560,10 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminDashboardRoute: AdminDashboardRoute,
   AdminEnrollmentsRoute: AdminEnrollmentsRoute,
   AdminInstructorsRoute: AdminInstructorsRoute,
+  AdminNotificationsRoute: AdminNotificationsRoute,
   AdminPaymentsRoute: AdminPaymentsRoute,
+  AdminPayoutsRoute: AdminPayoutsRoute,
+  AdminReportsRoute: AdminReportsRoute,
   AdminReviewsRoute: AdminReviewsRoute,
   AdminStudentsRoute: AdminStudentsRoute,
   AdminUsersRoute: AdminUsersRoute,
@@ -1369,6 +1591,7 @@ interface InstructorRouteChildren {
   InstructorDashboardRoute: typeof InstructorDashboardRoute
   InstructorEarningsRoute: typeof InstructorEarningsRoute
   InstructorMessagesRoute: typeof InstructorMessagesRoute
+  InstructorNotificationsRoute: typeof InstructorNotificationsRoute
   InstructorProfileRoute: typeof InstructorProfileRoute
   InstructorReviewsRoute: typeof InstructorReviewsRoute
   InstructorSettingsRoute: typeof InstructorSettingsRoute
@@ -1384,6 +1607,7 @@ const InstructorRouteChildren: InstructorRouteChildren = {
   InstructorDashboardRoute: InstructorDashboardRoute,
   InstructorEarningsRoute: InstructorEarningsRoute,
   InstructorMessagesRoute: InstructorMessagesRoute,
+  InstructorNotificationsRoute: InstructorNotificationsRoute,
   InstructorProfileRoute: InstructorProfileRoute,
   InstructorReviewsRoute: InstructorReviewsRoute,
   InstructorSettingsRoute: InstructorSettingsRoute,
@@ -1448,9 +1672,16 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   StudentRoute: StudentRouteWithChildren,
   TermsRoute: TermsRoute,
+  ApiEventsRoute: ApiEventsRoute,
+  ApiHealthRoute: ApiHealthRoute,
+  ApiReadyRoute: ApiReadyRoute,
   CoursesCourseIdRoute: CoursesCourseIdRoute,
   InstructorsInstructorIdRoute: InstructorsInstructorIdRoute,
   CoursesIndexRoute: CoursesIndexRoute,
+  ApiAccountAvatarRoute: ApiAccountAvatarRoute,
+  ApiCronCleanupUploadsRoute: ApiCronCleanupUploadsRoute,
+  ApiMediaUploadFinalizeRoute: ApiMediaUploadFinalizeRoute,
+  ApiMediaUploadIntentRoute: ApiMediaUploadIntentRoute,
   CertificatesVerifyCodeRoute: CertificatesVerifyCodeRoute,
   MediaLessonVideoAssetIdRoute: MediaLessonVideoAssetIdRoute,
   MediaPublicAssetIdRoute: MediaPublicAssetIdRoute,

@@ -5,9 +5,20 @@ import * as courseRepository from "../repositories/course-repository";
 import * as enrollmentRepository from "../repositories/enrollment-repository";
 import * as orderRepository from "../repositories/order-repository";
 import { isEnrollmentEntitled } from "./enrollment-policy";
+import { evaluateRefundEligibility, REFUND_MESSAGES } from "./refund-policy";
 import { publicAssetUrl } from "../media/media-urls";
 import type { SafeUser } from "../auth/types";
-import type { CheckoutDTO, OrderSummaryDTO, AdminOrderDTO } from "../dto/checkout";
+import { ForbiddenError } from "../auth/guards";
+import { resolvePagination } from "../validation/pagination";
+import { listAdminPaymentsSchema } from "../validation/admin";
+import type {
+  CheckoutDTO,
+  OrderSummaryDTO,
+  AdminOrderDTO,
+  AdminOrderListDTO,
+  AdminPaymentSummaryDTO,
+} from "../dto/checkout";
+import type { BillingSummaryDTO } from "../dto/account";
 
 export class CheckoutError extends Error {}
 export class CourseNotAvailableForPurchaseError extends CheckoutError {
@@ -157,8 +168,28 @@ export async function getMyPurchases(user: SafeUser) {
       currency: order.currency,
       status: order.status,
       createdAt: order.createdAt.toISOString(),
+      // A refunded order's payment carries the refund; null for everything else.
+      refundedAt: order.payments.find((p) => p.refund)?.refund?.processedAt?.toISOString() ?? null,
     };
   });
+}
+
+/**
+ * Compact billing view for Settings → Billing (Phase 13 spec item 18/19).
+ * Built entirely from getMyPurchases() — no second billing ledger, no
+ * business logic duplicated from /student/purchases.
+ */
+export async function getBillingSummary(user: SafeUser): Promise<BillingSummaryDTO> {
+  const purchases = await getMyPurchases(user);
+  const counted = purchases.filter((p) => p.status === "PAID" || p.status === "PARTIALLY_REFUNDED");
+  const totalSpent = counted.reduce((sum, p) => sum + p.amount, 0);
+
+  return {
+    totalOrders: purchases.length,
+    totalSpent,
+    currency: purchases[0]?.currency ?? "USD",
+    recent: purchases.slice(0, 5),
+  };
 }
 
 export { toOrderSummaryDTO };
@@ -167,12 +198,43 @@ export { toOrderSummaryDTO };
 // Admin
 // ---------------------------------------------------------------------------
 
-export async function getAdminOrders(): Promise<AdminOrderDTO[]> {
-  const orders = await orderRepository.listAllOrders();
-  return orders.map((order) => {
+export async function getAdminOrders(
+  admin: SafeUser,
+  input: unknown = {},
+): Promise<AdminOrderListDTO> {
+  if (admin.role !== "ADMIN") throw new ForbiddenError("Only admins can do that.");
+  const parsed = listAdminPaymentsSchema.parse(input ?? {});
+  const { page, pageSize, skip, take } = resolvePagination(parsed);
+  const filters: orderRepository.AdminOrderFilters = {
+    ...(parsed.search && { search: parsed.search }),
+    ...(parsed.status && { status: parsed.status }),
+    ...(parsed.refund && { refund: parsed.refund }),
+    ...(parsed.sort && { sort: parsed.sort }),
+  };
+
+  // Three queries total regardless of page size: page rows (with user, item,
+  // latest payment + refund joined), filtered count, unfiltered summary.
+  const [orders, total, totals] = await Promise.all([
+    orderRepository.listOrdersForAdmin(filters, skip, take),
+    orderRepository.countOrdersForAdmin(filters),
+    orderRepository.orderTotalsByStatus(),
+  ]);
+
+  const mapped: AdminOrderDTO[] = orders.map((order) => {
     const item = order.items[0];
     const latestPayment = order.payments[0];
+
+    // Same pure rules the refund service uses, so the button state can never
+    // disagree with what the server will actually allow. Only PAID orders get
+    // a "blocked" explanation; an already-refunded/pending/failed order just
+    // has no Refund action.
+    const eligibility = evaluateRefundEligibility(order);
+    const refundBlockedReason =
+      !eligibility.ok && order.status === "PAID" ? REFUND_MESSAGES[eligibility.code] : null;
+    const refundRow = latestPayment?.refund ?? null;
+
     return {
+      id: order.id,
       orderId: order.id,
       orderNumber: order.orderNumber,
       studentName: order.user.name,
@@ -184,6 +246,47 @@ export async function getAdminOrders(): Promise<AdminOrderDTO[]> {
       paymentStatus: latestPayment?.status ?? null,
       paymentProvider: latestPayment?.provider ?? null,
       createdAt: order.createdAt.toISOString(),
+      refundable: eligibility.ok,
+      refundBlockedReason,
+      refund: refundRow
+        ? {
+            reference: refundRow.reference,
+            processedAt: refundRow.processedAt?.toISOString() ?? null,
+          }
+        : null,
     };
   });
+
+  return { orders: mapped, total, page, pageSize, summary: summarizeOrderTotals(totals) };
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** Pure so it can be unit-checked: see AdminPaymentSummaryDTO for the exact definitions. */
+export function summarizeOrderTotals(
+  totals: {
+    status: string;
+    _sum: { amount: { toString(): string } | null };
+    _count: { _all: number };
+  }[],
+): AdminPaymentSummaryDTO {
+  const sum = (...statuses: string[]) =>
+    totals
+      .filter((t) => statuses.includes(t.status))
+      .reduce((n, t) => n + Number(t._sum.amount?.toString() ?? 0), 0);
+  const count = (...statuses: string[]) =>
+    totals.filter((t) => statuses.includes(t.status)).reduce((n, t) => n + t._count._all, 0);
+
+  const refundedVolume = sum("REFUNDED", "PARTIALLY_REFUNDED");
+  const grossCollected = sum("PAID") + refundedVolume;
+  return {
+    grossCollected: round2(grossCollected),
+    refundedVolume: round2(refundedVolume),
+    netCollected: round2(grossCollected - refundedVolume),
+    paidCount: count("PAID"),
+    refundedCount: count("REFUNDED", "PARTIALLY_REFUNDED"),
+    failedCount: count("FAILED"),
+    pendingCount: count("PENDING"),
+    currency: "USD",
+  };
 }

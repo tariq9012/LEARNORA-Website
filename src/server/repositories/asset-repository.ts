@@ -1,5 +1,6 @@
 import { prisma } from "../db/client";
 import type { MediaPurpose } from "../media/media-config";
+import { getStorageProvider } from "../storage";
 
 export function createAsset(data: {
   ownerId: string;
@@ -9,7 +10,12 @@ export function createAsset(data: {
   sizeBytes: number;
   purpose: MediaPurpose;
 }) {
-  return prisma.asset.create({ data: { ...data, storageProvider: "LOCAL" } });
+  return prisma.asset.create({
+    data: {
+      ...data, // Records where THIS file lives (the provider that just saved it).
+      storageProvider: getStorageProvider().kind,
+    },
+  });
 }
 
 export function findAssetById(assetId: string) {
@@ -75,7 +81,10 @@ export function createLessonResource(data: { lessonId: string; assetId: string; 
 export function findLessonResource(resourceId: string) {
   return prisma.lessonResource.findUnique({
     where: { id: resourceId },
-    include: { asset: true, lesson: { select: { id: true, section: { select: { courseId: true } } } } },
+    include: {
+      asset: true,
+      lesson: { select: { id: true, section: { select: { courseId: true } } } },
+    },
   });
 }
 

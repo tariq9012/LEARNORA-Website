@@ -1,3 +1,6 @@
+import { RESET_TOKEN_TTL_MS } from "./password-reset-mail";
+import { runInBackground } from "../lib/background";
+import { dispatchPasswordResetEmail } from "./password-reset-mail";
 import { getRequestIP } from "@tanstack/react-start/server";
 
 import * as passwordResetRepository from "../repositories/password-reset-repository";
@@ -15,8 +18,6 @@ import { generateOpaqueToken, hashOpaqueToken } from "./tokens";
 import { toSafeUser, type SafeUser } from "./types";
 
 export class AuthError extends Error {}
-
-const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 function requestIp(): string {
   return getRequestIP({ xForwardedFor: true }) ?? "unknown";
@@ -89,9 +90,8 @@ export async function logout(): Promise<void> {
 /**
  * Always returns the same generic response regardless of whether the
  * email is registered (account enumeration defense). If it is, a
- * reset token is generated and stored (hashed); since no email-delivery
- * infrastructure exists yet, the raw link is only logged server-side in
- * development. Wiring an actual email provider is later-phase work.
+ * reset token is generated and stored (hashed) and emailed through the
+ * configured provider (console in development, Resend in production).
  */
 export async function requestPasswordReset(input: unknown): Promise<{ message: string }> {
   enforceRateLimit(`forgot-password:${requestIp()}`, 5, 15 * 60 * 1000);
@@ -108,12 +108,10 @@ export async function requestPasswordReset(input: unknown): Promise<{ message: s
       expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
     });
 
-    // TODO(later phase): send `rawToken` via email instead of logging it.
-    // Never log this in production — there is no email provider connected
-    // yet, so this is the only way to exercise the flow in development.
-    if (process.env["NODE_ENV"] !== "production") {
-      console.log(`[dev-only] Password reset link for ${email}: /reset-password?token=${rawToken}`);
-    }
+    // Background delivery (see password-reset-mail.ts) so neither timing nor a
+    // provider outage reveals whether the address exists. runInBackground keeps
+    // the Vercel invocation alive until the email has actually been sent.
+    runInBackground(dispatchPasswordResetEmail({ id: user.id, email: user.email }, rawToken));
   }
 
   return {
@@ -138,8 +136,13 @@ export async function resetPassword(input: unknown): Promise<{ message: string }
   }
 
   const passwordHash = await hashPassword(data.password);
+  // Claim first, atomically: of several simultaneous requests with the same
+  // token only one gets count === 1 and may change the password.
+  const claim = await passwordResetRepository.claimPasswordResetToken(resetToken.id);
+  if (claim.count !== 1) {
+    throw new AuthError("This reset link is invalid or has expired. Request a new one.");
+  }
   await userRepository.updatePasswordHash(resetToken.userId, passwordHash);
-  await passwordResetRepository.markPasswordResetTokenUsed(resetToken.id);
   await revokeAllSessionsForUser(resetToken.userId);
 
   return { message: "Your password has been updated. You can now log in." };

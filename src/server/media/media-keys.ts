@@ -25,6 +25,18 @@ function extensionForMime(mimeType: string): string {
 }
 
 /**
+ * Storage key for a user's avatar. Keyed by userId (not an asset id, since
+ * none exists yet at call time) and a fresh uuid so replacing an avatar
+ * never collides with — or needs to overwrite — the previous file; the old
+ * one is deleted separately once the new one is safely written (see
+ * replaceAsset() in media-service.ts).
+ */
+export function generateAvatarStorageKey(userId: string, mimeType: string): string {
+  const ext = extensionForMime(mimeType);
+  return toStorageKey("avatars", userId, `${randomUUID()}.${ext}`);
+}
+
+/**
  * Builds a safe, unique, server-controlled storage key. The instructor's
  * original filename is kept only as display metadata (Asset.originalFilename)
  * — it never influences where the file actually lives on disk, so there is
@@ -64,6 +76,9 @@ export function generateStorageKey(params: {
         "resources",
         `${id}.${ext}`,
       );
+    case "AVATAR":
+      // Avatars aren't course-scoped — use generateAvatarStorageKey() instead.
+      throw new Error("generateAvatarStorageKey() should be used for AVATAR uploads");
   }
 }
 

@@ -2,6 +2,7 @@ import { formatDurationHM, formatLessonDuration, formatMonthYear } from "@/lib/f
 
 import * as adminCourseRepository from "../repositories/admin-course-repository";
 import { rejectCourseSchema } from "../validation/instructor-course";
+import { notifyCourseReviewed } from "./notification-events";
 import type { AdminCourseQueueItemDTO, AdminCourseReviewDTO } from "../dto/admin-course";
 
 export class AdminReviewError extends Error {}
@@ -61,11 +62,26 @@ export async function getCourseForReview(courseId: string): Promise<AdminCourseR
   };
 }
 
+async function announceReview(courseId: string, approved: boolean): Promise<void> {
+  const course = await adminCourseRepository.findReviewOutcome(courseId);
+  if (!course) return;
+  await notifyCourseReviewed({
+    ownerId: course.instructorId,
+    courseId,
+    courseTitle: course.title,
+    approved,
+    reviewedAtMs: (course.reviewedAt ?? new Date()).getTime(),
+    reason: approved ? null : course.rejectionReason,
+  });
+}
+
 export async function approveCourse(adminId: string, courseId: string): Promise<void> {
   const result = await adminCourseRepository.approveCourse(courseId, adminId);
   if (result.count === 0) {
+    // A repeated/idempotent review matches 0 rows and throws HERE, before any notification.
     throw new AdminReviewError("Course has already been reviewed.");
   }
+  await announceReview(courseId, true);
 }
 
 export async function rejectCourse(
@@ -78,6 +94,7 @@ export async function rejectCourse(
   if (result.count === 0) {
     throw new AdminReviewError("Course has already been reviewed.");
   }
+  await announceReview(courseId, false);
 }
 
 export async function getModerationCounts() {

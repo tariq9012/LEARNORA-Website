@@ -6,7 +6,10 @@ export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
       { title: "Privacy policy — Learnora" },
-      { name: "description", content: "How Learnora collects, uses and protects student and instructor data." },
+      {
+        name: "description",
+        content: "How Learnora collects, uses and protects student and instructor data.",
+      },
       { property: "og:title", content: "Privacy policy — Learnora" },
       { property: "og:description", content: "How Learnora handles your data." },
     ],

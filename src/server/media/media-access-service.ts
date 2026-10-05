@@ -51,7 +51,10 @@ export async function canViewAsset(
 
       if (!user) return { allowed: false, reason: "Please log in to view this video." };
 
-      const enrollment = await enrollmentRepository.findEnrollment(user.id, lesson.section.courseId);
+      const enrollment = await enrollmentRepository.findEnrollment(
+        user.id,
+        lesson.section.courseId,
+      );
       if (enrollment && isEnrollmentEntitled(enrollment.status)) return { allowed: true };
 
       return { allowed: false, reason: "Enroll in this course to view this lesson." };
@@ -68,11 +71,21 @@ export async function canViewAsset(
 
       if (!user) return { allowed: false, reason: "Please log in to download this file." };
 
-      const enrollment = await enrollmentRepository.findEnrollment(user.id, lesson.section.courseId);
+      const enrollment = await enrollmentRepository.findEnrollment(
+        user.id,
+        lesson.section.courseId,
+      );
       if (enrollment && isEnrollmentEntitled(enrollment.status)) return { allowed: true };
 
       return { allowed: false, reason: "Enroll in this course to download this file." };
     }
+
+    case "AVATAR":
+      // A profile avatar is meant to be seen wherever the profile itself
+      // is shown (public instructor pages, reviews, etc.) — same
+      // reasoning as a published course thumbnail. Never used for
+      // anything private, so no owner/enrollment check applies.
+      return { allowed: true };
 
     default:
       // Exhaustiveness guard — every AssetPurpose is handled above.

@@ -23,6 +23,7 @@ import {
   FolderTree,
   ClipboardList,
   CreditCard,
+  Banknote,
   FileBarChart,
   Ticket,
   type LucideIcon,
@@ -32,6 +33,7 @@ import { Avatar } from "@/components/ui/kit";
 import { cn } from "@/lib/utils";
 import { initialsOf } from "@/lib/format";
 import { logoutFn } from "@/server/functions/auth";
+import { useRealtimeConnection, useUnreadCounts } from "@/lib/comm-refresh";
 
 export type NavItem = { to: string; label: string; icon: LucideIcon };
 
@@ -57,6 +59,7 @@ export const instructorNav: NavItem[] = [
   { to: "/instructor/earnings", label: "Earnings", icon: Wallet },
   { to: "/instructor/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/instructor/messages", label: "Messages", icon: MessageSquare },
+  { to: "/instructor/notifications", label: "Notifications", icon: Bell },
   { to: "/instructor/profile", label: "Profile", icon: User },
   { to: "/instructor/settings", label: "Settings", icon: Settings },
 ];
@@ -71,6 +74,7 @@ export const adminNav: NavItem[] = [
   { to: "/admin/categories", label: "Categories", icon: FolderTree },
   { to: "/admin/enrollments", label: "Enrollments", icon: ClipboardList },
   { to: "/admin/payments", label: "Payments", icon: CreditCard },
+  { to: "/admin/payouts", label: "Payouts", icon: Banknote },
   { to: "/admin/reviews", label: "Reviews", icon: Star },
   { to: "/admin/reports", label: "Reports", icon: FileBarChart },
   { to: "/admin/certificates", label: "Certificates", icon: Award },
@@ -98,6 +102,16 @@ export function DashboardLayout({
   const router = useRouter();
   const nav = role === "student" ? studentNav : role === "instructor" ? instructorNav : adminNav;
   const roleLabel = roleLabels[role];
+  // Real unread counts (notifications + messages) for the sidebar badges.
+  useRealtimeConnection();
+  const unread = useUnreadCounts();
+  const badgeFor = (to: string) =>
+    to.endsWith("/notifications")
+      ? unread.notifications
+      : to.endsWith("/messages")
+        ? unread.messages
+        : 0;
+  const totalUnread = unread.notifications + unread.messages;
 
   async function handleLogout() {
     setOpen(false);
@@ -126,6 +140,14 @@ export function DashboardLayout({
           >
             <Icon size={16} className="shrink-0" />
             <span className="truncate">{label}</span>
+            {badgeFor(to) > 0 && (
+              <span
+                aria-label={`${badgeFor(to)} unread`}
+                className="ml-auto rounded-full bg-brand px-1.5 py-0.5 font-mono text-[10px] leading-none text-white"
+              >
+                {badgeFor(to) > 99 ? "99+" : badgeFor(to)}
+              </span>
+            )}
           </Link>
         ))}
       </nav>
@@ -133,6 +155,7 @@ export function DashboardLayout({
         <div className="flex items-center gap-3 rounded-lg px-2 py-2">
           <Avatar
             initials={user ? initialsOf(user.name) : roleLabel.slice(0, 2).toUpperCase()}
+            src={user?.avatarUrl ?? null}
             size="sm"
           />
           <div className="min-w-0 flex-1">
@@ -164,9 +187,15 @@ export function DashboardLayout({
         <button
           onClick={() => setOpen(true)}
           aria-label="Open navigation"
-          className="rounded-md p-2 text-muted-foreground hover:text-cream"
+          className="relative rounded-md p-2 text-muted-foreground hover:text-cream"
         >
           <Menu size={20} />
+          {totalUnread > 0 && (
+            <span
+              aria-label="Unread items"
+              className="absolute right-1 top-1 size-2 rounded-full bg-brand"
+            />
+          )}
         </button>
       </div>
 

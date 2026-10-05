@@ -1,6 +1,7 @@
 import type { Prisma } from "../../generated/prisma/client";
 
 import { prisma } from "../db/client";
+import { entitledEnrollmentsCount } from "../services/enrollment-policy";
 
 /**
  * Repositories are the only layer allowed to talk to Prisma directly.
@@ -15,8 +16,8 @@ const CARD_SELECT_INCLUDE = {
   // has no `_avg` over a to-many relation in the same query, and at this
   // catalog's scale (tens of reviews per course) pulling the ratings array
   // alongside the row is simpler than a second round-trip per course.
-  reviews: { select: { rating: true } },
-  _count: { select: { enrollments: true, reviews: true } },
+  reviews: { where: { hiddenAt: null }, select: { rating: true } },
+  _count: { select: { enrollments: entitledEnrollmentsCount(), reviews: true } },
   // Only durations, not full lesson content — enough to sum a total
   // runtime for the card badge without bloating the list payload.
   sections: { select: { lessons: { select: { duration: true } } } },
@@ -96,8 +97,8 @@ export function findPublishedCourseBySlug(slug: string) {
     include: {
       category: true,
       instructor: { include: { instructorProfile: true } },
-      reviews: { select: { rating: true } },
-      _count: { select: { enrollments: true, reviews: true } },
+      reviews: { where: { hiddenAt: null }, select: { rating: true } },
+      _count: { select: { enrollments: entitledEnrollmentsCount(), reviews: true } },
       sections: {
         orderBy: { position: "asc" },
         include: { lessons: { orderBy: { position: "asc" } } },

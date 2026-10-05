@@ -1,9 +1,11 @@
 import * as assetRepository from "../repositories/asset-repository";
 import * as courseRepository from "../repositories/instructor-course-repository";
 import * as lessonRepository from "../repositories/lesson-repository";
-import { getStorageProvider } from "../storage";
+import * as userRepository from "../repositories/user-repository";
+import { getStorageProviderFor } from "../storage";
 import { isEditable } from "../services/instructor-course-service";
 import type { ApprovedInstructor } from "../auth/instructor-guard";
+import type { SafeUser } from "../auth/types";
 import type { MediaPurpose } from "./media-config";
 import type { ReceivedUpload } from "./upload-handler";
 import { lessonResourceUrl, lessonVideoUrl, publicAssetUrl } from "./media-urls";
@@ -16,7 +18,7 @@ export class MediaOwnershipError extends Error {
 }
 export class MediaStateError extends Error {}
 
-async function loadEditableOwnedCourse(instructor: ApprovedInstructor, courseId: string) {
+export async function loadEditableOwnedCourse(instructor: ApprovedInstructor, courseId: string) {
   const course = await courseRepository.findOwnedCourse(courseId, instructor.id);
   if (!course) throw new MediaOwnershipError();
   if (!isEditable(course.status)) {
@@ -25,7 +27,7 @@ async function loadEditableOwnedCourse(instructor: ApprovedInstructor, courseId:
   return course;
 }
 
-async function loadOwnedLessonForMedia(
+export async function loadOwnedLessonForMedia(
   instructor: ApprovedInstructor,
   courseId: string,
   lessonId: string,
@@ -55,7 +57,7 @@ async function replaceAsset(previousAssetId: string | null) {
   const previous = await assetRepository.findAssetById(previousAssetId);
   if (!previous) return;
   await assetRepository.deleteAsset(previous.id).catch(() => undefined);
-  await getStorageProvider()
+  await getStorageProviderFor(previous.storageProvider)
     .delete(previous.storageKey)
     .catch(() => undefined);
 }
@@ -201,7 +203,7 @@ export async function removeLessonResource(
 
   await assetRepository.deleteLessonResource(resourceId);
   await assetRepository.deleteAsset(resource.assetId).catch(() => undefined);
-  await getStorageProvider()
+  await getStorageProviderFor(resource.asset.storageProvider)
     .delete(resource.asset.storageKey)
     .catch(() => undefined);
 }
@@ -223,7 +225,9 @@ export async function listLessonResourcesForBuilder(
 }
 
 /** Purpose → max-size lookup used by route handlers before they start streaming a body. */
-export function purposeForKind(kind: "thumbnail" | "preview" | "lesson-video" | "lesson-resource"): MediaPurpose {
+export function purposeForKind(
+  kind: "thumbnail" | "preview" | "lesson-video" | "lesson-resource",
+): MediaPurpose {
   switch (kind) {
     case "thumbnail":
       return "COURSE_THUMBNAIL";
@@ -234,4 +238,40 @@ export function purposeForKind(kind: "thumbnail" | "preview" | "lesson-video" | 
     case "lesson-resource":
       return "LESSON_RESOURCE";
   }
+}
+
+// ---------------------------------------------------------------------------
+// Account avatar (Phase 13) — any authenticated role, not course-scoped.
+// ---------------------------------------------------------------------------
+
+/**
+ * Attaches a new avatar for the current user, replacing any previous one.
+ * Reuses the same asset architecture as course media (Asset row + storage
+ * provider) rather than a second image-storage system. Ownership is
+ * always the authenticated caller — never a client-supplied userId.
+ */
+export async function attachUserAvatar(
+  user: SafeUser,
+  uploaded: ReceivedUpload,
+): Promise<AssetDTO> {
+  const previous = await userRepository.findUserById(user.id);
+  const asset = await assetRepository.createAsset({
+    ownerId: user.id,
+    storageKey: uploaded.storageKey,
+    originalFilename: uploaded.originalFilename,
+    mimeType: uploaded.mimeType,
+    sizeBytes: uploaded.sizeBytes,
+    purpose: "AVATAR",
+  });
+  await userRepository.updateAvatarAsset(user.id, asset.id);
+  await replaceAsset(previous?.avatarAssetId ?? null);
+  return toAssetDTO(asset, publicAssetUrl(asset.id));
+}
+
+/** Removes the current user's avatar asset, if any. Never touches the legacy `avatar` URL column. */
+export async function removeUserAvatar(user: SafeUser): Promise<void> {
+  const current = await userRepository.findUserById(user.id);
+  if (!current?.avatarAssetId) return;
+  await userRepository.updateAvatarAsset(user.id, null);
+  await replaceAsset(current.avatarAssetId);
 }

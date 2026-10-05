@@ -4,6 +4,7 @@ import { Prisma } from "../../generated/prisma/client";
 import * as certificateRepository from "../repositories/certificate-repository";
 import * as enrollmentRepository from "../repositories/enrollment-repository";
 import * as courseRepository from "../repositories/course-repository";
+import { notifyCertificateReady } from "./notification-events";
 import type { SafeUser } from "../auth/types";
 import type { CertificateDTO, PublicCertificateVerificationDTO } from "../dto/certificate";
 
@@ -94,6 +95,14 @@ export async function getOrCreateCertificate(
       learnerName: user.name,
       courseTitle: course.title,
       certificateCode: generateCertificateCode(),
+    });
+    // Phase 11: only the request that actually ISSUED the certificate notifies
+    // (the "existing" fast path and the lost-race path below return without
+    // notifying); the eventKey certificate:<id> is the second guard.
+    await notifyCertificateReady({
+      studentId: user.id,
+      certificateId: created.id,
+      courseTitle: course.title,
     });
     return toDTO(created, course.slug, course.instructor.name);
   } catch (error) {

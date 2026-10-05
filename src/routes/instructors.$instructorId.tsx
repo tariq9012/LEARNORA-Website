@@ -52,7 +52,7 @@ function InstructorProfile() {
     <SiteLayout>
       <header className="glow border-b border-line">
         <div className="mx-auto flex max-w-[1240px] flex-wrap items-start gap-8 px-6 py-14">
-          <Avatar initials={instructor.initials} size="xl" />
+          <Avatar initials={instructor.initials} src={instructor.avatarUrl} size="xl" />
           <div className="min-w-0 flex-1">
             <p className="eyebrow">Instructor</p>
             <h1 className="mt-3 font-display text-4xl tracking-tight">{instructor.name}</h1>

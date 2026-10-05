@@ -1,9 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { Badge, Rating } from "@/components/ui/kit";
 import { categoryImage } from "@/lib/course-images";
-import { currency } from "@/data/mock";
 import type { CourseCardDTO } from "@/server/dto/course";
 import { cn } from "@/lib/utils";
+import { formatPrice } from "@/lib/format";
 
 export function CourseCard({ course, className }: { course: CourseCardDTO; className?: string }) {
   const discount = course.originalPrice
@@ -60,10 +60,10 @@ export function CourseCard({ course, className }: { course: CourseCardDTO; class
 
         <div className="mt-4 flex items-center justify-between border-t border-line pt-4">
           <div className="flex items-baseline gap-2">
-            <span className="font-display text-xl">{currency(course.price)}</span>
+            <span className="font-display text-xl">{formatPrice(course.price)}</span>
             {course.originalPrice && (
               <span className="text-sm text-muted-foreground line-through">
-                {currency(course.originalPrice)}
+                {formatPrice(course.originalPrice)}
               </span>
             )}
           </div>

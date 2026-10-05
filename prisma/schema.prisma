@@ -84,11 +84,28 @@ enum PaymentStatus {
   PARTIALLY_REFUNDED
 }
 
+// Payout lifecycle (Phase 10). Only PENDING -> PAID | REJECTED is driven by
+// the app today (an admin decision); PROCESSING/FAILED already existed and
+// are kept for a future real payout provider. FAILED = a transfer attempt
+// failed; REJECTED = an admin declined the request. Both release the
+// reserved earnings, and PENDING/PROCESSING both count as "locked".
 enum PayoutStatus {
   PENDING
   PROCESSING
   PAID
   FAILED
+  REJECTED
+}
+
+// Instructor-earning lifecycle (Phase 10). An earning is AVAILABLE the
+// moment its paid purchase commits (no hold period in the simulated phase),
+// RESERVED while it is locked into a PENDING payout, PAID once that payout
+// is paid, and REVERSED when the purchase is refunded.
+enum EarningStatus {
+  AVAILABLE
+  RESERVED
+  PAID
+  REVERSED
 }
 
 enum RefundStatus {
@@ -98,6 +115,15 @@ enum RefundStatus {
   PROCESSED
 }
 
+// Phase 11 mapping of business events onto types (equivalent values reused,
+// only genuinely missing ones added):
+//   course enrolled                      -> ENROLLMENT
+//   payment success                      -> PAYMENT   (failure is not notified: the student sees it on screen)
+//   refund completed / earning reversed  -> REFUND
+//   payout requested / paid / rejected   -> PAYOUT    (distinguished by title + eventKey)
+//   course approved / rejected           -> COURSE_APPROVED / COURSE_REJECTED
+//   course completed / certificate ready -> COURSE_COMPLETED / CERTIFICATE_READY
+//   new chat message                     -> NEW_MESSAGE
 enum NotificationType {
   ENROLLMENT
   COURSE_APPROVED
@@ -107,6 +133,10 @@ enum NotificationType {
   PAYOUT
   SYSTEM
   ANNOUNCEMENT
+  PAYMENT
+  REFUND
+  COURSE_COMPLETED
+  CERTIFICATE_READY
 }
 
 enum ReportTargetType {
@@ -114,6 +144,23 @@ enum ReportTargetType {
   USER
   REVIEW
   MESSAGE
+}
+
+enum ReportReason {
+  SPAM
+  HARASSMENT
+  INAPPROPRIATE
+  MISLEADING
+  OTHER
+}
+
+// The moderation action actually taken when a report was resolved (null
+// while OPEN/IN_REVIEW, and null for a DISMISSED report — dismissing takes
+// no action on the content).
+enum ReportAction {
+  REVIEW_HIDDEN
+  REVIEW_RESTORED
+  MESSAGE_REMOVED
 }
 
 enum ReportStatus {
@@ -128,10 +175,12 @@ enum AssetPurpose {
   COURSE_PREVIEW
   LESSON_VIDEO
   LESSON_RESOURCE
+  AVATAR
 }
 
 enum StorageProviderKind {
   LOCAL
+  S3
 }
 
 // ---------------------------------------------------------------------------
@@ -143,7 +192,12 @@ model User {
   name          String
   email         String     @unique
   passwordHash  String
+  // Legacy URL field, same pattern as Course.thumbnail: pre-Phase-13 rows may
+  // still have a plain string here. New avatars use avatarAssetId below; DTOs
+  // fall back to this only when no Asset is set. See src/server/services/profile-service.ts.
   avatar        String?
+  avatarAssetId String?    @unique
+  avatarAsset   Asset?     @relation("UserAvatarAsset", fields: [avatarAssetId], references: [id], onDelete: SetNull)
   role          UserRole   @default(STUDENT)
   status        UserStatus @default(ACTIVE)
   emailVerified Boolean    @default(false)
@@ -153,25 +207,29 @@ model User {
   studentProfile    StudentProfile?
   instructorProfile InstructorProfile?
 
-  coursesInstructed   Course[]                   @relation("InstructorCourses")
-  coursesReviewed     Course[]                   @relation("CourseReviewedBy")
-  enrollments         Enrollment[]
-  reviews             Review[]
-  wishlist            Wishlist[]
-  orders              Order[]
-  certificates        Certificate[]
-  notifications       Notification[]
-  conversations       ConversationParticipant[]
-  sentMessages        Message[]                  @relation("MessageSender")
-  earnings            InstructorEarning[]
-  payouts             Payout[]
-  reportsFiled        Report[]                   @relation("ReportsFiled")
-  reportsResolved     Report[]                   @relation("ReportsResolved")
-  refundsRequested    Refund[]                   @relation("RefundsRequested")
-  refundsProcessed    Refund[]                   @relation("RefundsProcessed")
-  sessions            Session[]
-  passwordResetTokens PasswordResetToken[]
-  assets              Asset[]                    @relation("AssetOwner")
+  coursesInstructed      Course[]                  @relation("InstructorCourses")
+  coursesReviewed        Course[]                  @relation("CourseReviewedBy")
+  instructorProfilesReviewed InstructorProfile[]    @relation("InstructorProfileReviewedBy")
+  enrollments            Enrollment[]
+  reviews                Review[]
+  wishlist               Wishlist[]
+  orders                 Order[]
+  certificates           Certificate[]
+  notifications          Notification[]
+  conversations          ConversationParticipant[]
+  sentMessages           Message[]                 @relation("MessageSender")
+  studentConversations   Conversation[]            @relation("ConversationStudent")
+  earnings               InstructorEarning[]
+  payouts                Payout[]                  @relation("InstructorPayouts")
+  payoutsProcessed       Payout[]                  @relation("PayoutsProcessed")
+  reportsFiled           Report[]                  @relation("ReportsFiled")
+  reportsResolved        Report[]                  @relation("ReportsResolved")
+  refundsRequested       Refund[]                  @relation("RefundsRequested")
+  refundsProcessed       Refund[]                  @relation("RefundsProcessed")
+  sessions               Session[]
+  passwordResetTokens    PasswordResetToken[]
+  assets                 Asset[]                   @relation("AssetOwner")
+  notificationPreference NotificationPreference?
 
   @@index([role])
   @@index([status])
@@ -187,6 +245,8 @@ model StudentProfile {
   interests         String[]
   learningGoals     String?
   preferredLanguage String?
+  website           String?
+  location          String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -206,6 +266,12 @@ model InstructorProfile {
   approvalStatus  InstructorApprovalStatus @default(PENDING)
   rejectionReason String?
   approvedAt      DateTime?
+  // Mirrors Course.reviewedAt/reviewedById exactly — set on every admin
+  // decision (approve OR reject), so "who decided and when" is recorded
+  // even though approvedAt only means something on the approve path.
+  reviewedAt      DateTime?
+  reviewedById    String?
+  reviewedBy      User?                    @relation("InstructorProfileReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
   // Denormalized aggregates, recomputed by the application from Review /
   // Enrollment rather than maintained by hand.
   averageRating   Decimal?                 @db.Decimal(3, 2)
@@ -265,10 +331,41 @@ model Asset {
   coursePreviewOf   Course?          @relation("CoursePreviewAsset")
   lessonVideoOf     Lesson?          @relation("LessonVideoAsset")
   lessonResources   LessonResource[]
+  avatarOf          User?            @relation("UserAvatarAsset")
 
   @@index([ownerId])
   @@index([purpose])
   @@map("assets")
+}
+
+// Phase 18: one row per direct-to-R2 upload the server has authorized.
+// The server records WHAT it signed (key, size, type, owner, target) BEFORE the
+// browser uploads, so finalize can verify the object against this row instead
+// of trusting anything the browser says. Single-use: `finalizedAt`/`assetId`
+// are set exactly once, inside the same transaction that creates the Asset.
+// Deliberately NOT foreign-keyed to users/courses/lessons: a leftover row must
+// never block deleting those, and authorization is re-checked at finalize.
+model UploadIntent {
+  id               String       @id @default(cuid())
+  userId           String
+  purpose          AssetPurpose
+  courseId         String?
+  lessonId         String?
+  // Server-generated (media-keys.ts); unique so two intents can never share an object.
+  storageKey       String       @unique
+  originalFilename String
+  mimeType         String
+  expectedSize     Int
+  resourceTitle    String?
+  // Finalize must happen before this. The presigned URL itself expires much sooner.
+  expiresAt        DateTime
+  finalizedAt      DateTime?
+  assetId          String?      @unique
+  createdAt        DateTime     @default(now())
+
+  @@index([userId])
+  @@index([finalizedAt, expiresAt])
+  @@map("upload_intents")
 }
 
 // Multiple resources (PDF/ZIP/DOC/etc.) can be attached to one lesson.
@@ -331,17 +428,21 @@ model Course {
   updatedAt        DateTime     @updatedAt
   publishedAt      DateTime?
 
-  sections     CourseSection[]
-  enrollments  Enrollment[]
-  reviews      Review[]
-  wishlistedBy Wishlist[]
-  orderItems   OrderItem[]
-  certificates Certificate[]
+  sections      CourseSection[]
+  enrollments   Enrollment[]
+  reviews       Review[]
+  conversations Conversation[]
+  wishlistedBy  Wishlist[]
+  orderItems    OrderItem[]
+  certificates  Certificate[]
 
   @@index([instructorId])
   @@index([categoryId])
   @@index([status])
   @@index([featured])
+  // Added for Phase 14's instructor course-performance / admin course
+  // filters (instructor's own courses by status).
+  @@index([instructorId, status])
   @@map("courses")
 }
 
@@ -407,7 +508,12 @@ model Enrollment {
 
   // A student can only enroll in a given course once.
   @@unique([userId, courseId])
-  @@index([courseId])
+  // [courseId, status] serves plain courseId lookups too (leftmost
+  // prefix), so this replaces the old bare @@index([courseId]) rather
+  // than sitting alongside it. Added for Phase 14's admin
+  // enrollments/instructor students filters.
+  @@index([courseId, status])
+  @@index([userId, status])
   @@map("enrollments")
 }
 
@@ -435,20 +541,24 @@ model LessonProgress {
 // ---------------------------------------------------------------------------
 
 model Review {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   courseId  String
-  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
   // 1-5, validated at the application layer.
   rating    Int
   comment   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  // Phase 12 moderation: a hidden review is kept for audit but excluded from
+  // every public listing and rating aggregation. Null = visible (the default).
+  hiddenAt  DateTime?
 
   // One review per student per course.
   @@unique([userId, courseId])
   @@index([courseId])
+  @@index([courseId, hiddenAt])
   @@map("reviews")
 }
 
@@ -519,28 +629,42 @@ model Payment {
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
-  refunds Refund[]
+  // At most one refund per payment (Phase 10: full refunds only). The
+  // unique Refund.paymentId is the DB-level guard against a double refund.
+  refund Refund?
 
   @@index([orderId])
   @@index([status])
+  // Added for Phase 14's admin dashboard revenue-by-month grouping and
+  // admin payments date-range filtering.
+  @@index([status, createdAt])
   @@map("payments")
 }
 
 model Refund {
-  id            String       @id @default(cuid())
-  paymentId     String
-  payment       Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  amount        Decimal      @db.Decimal(10, 2)
-  reason        String?
-  status        RefundStatus @default(REQUESTED)
-  requestedById String
-  requestedBy   User         @relation("RefundsRequested", fields: [requestedById], references: [id])
-  processedById String?
-  processedBy   User?        @relation("RefundsProcessed", fields: [processedById], references: [id])
-  createdAt     DateTime     @default(now())
-  processedAt   DateTime?
+  id                String       @id @default(cuid())
+  // Unique: one refund per payment. Phase 10 only issues FULL refunds, so a
+  // second refund row for the same payment is always a bug — the database
+  // rejects it even if two admin requests race past the application checks.
+  paymentId         String       @unique
+  payment           Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  // Safe public reference (LRN-REF-XXXXXXXXXX), shown in the admin UI.
+  reference         String       @unique
+  // The payment provider's own refund id (simulated: SIM-RFD-...). Internal.
+  externalReference String?      @unique
+  amount            Decimal      @db.Decimal(10, 2)
+  reason            String?
+  status            RefundStatus @default(REQUESTED)
+  requestedById     String
+  requestedBy       User         @relation("RefundsRequested", fields: [requestedById], references: [id])
+  processedById     String?
+  processedBy       User?        @relation("RefundsProcessed", fields: [processedById], references: [id])
+  createdAt         DateTime     @default(now())
+  processedAt       DateTime?
 
-  @@index([paymentId])
+  // The instructor earning reversed by this refund (if the order had one).
+  earning InstructorEarning?
+
   @@index([status])
   @@map("refunds")
 }
@@ -550,35 +674,57 @@ model Refund {
 // ---------------------------------------------------------------------------
 
 model InstructorEarning {
-  id             String    @id @default(cuid())
+  id             String        @id @default(cuid())
   instructorId   String
-  instructor     User      @relation(fields: [instructorId], references: [id], onDelete: Cascade)
-  orderItemId    String    @unique
-  orderItem      OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
-  grossAmount    Decimal   @db.Decimal(10, 2)
-  // e.g. 0.7000 = instructor keeps 70%.
-  commissionRate Decimal   @db.Decimal(5, 4)
-  netAmount      Decimal   @db.Decimal(10, 2)
+  instructor     User          @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  orderItemId    String        @unique
+  orderItem      OrderItem     @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  grossAmount    Decimal       @db.Decimal(10, 2)
+  // The PLATFORM's share of the sale as a rate, e.g. 0.3000 = platform keeps
+  // 30% / instructor keeps 70%. Snapshotted per earning so changing the
+  // configured revenue share later never rewrites history (see
+  // src/server/config/finance-policy.ts). The platform amount is derivable
+  // as grossAmount - netAmount.
+  commissionRate Decimal       @db.Decimal(5, 4)
+  netAmount      Decimal       @db.Decimal(10, 2)
+  // Phase 10 lifecycle. Invariants (also enforced by CHECK constraints in
+  // the earnings_refunds_payouts migration):
+  //   payoutId IS NOT NULL  <=>  status IN (RESERVED, PAID)
+  //   refundId IS NOT NULL  <=>  status = REVERSED
+  status         EarningStatus @default(AVAILABLE)
   payoutId       String?
-  payout         Payout?   @relation(fields: [payoutId], references: [id])
-  createdAt      DateTime  @default(now())
+  payout         Payout?       @relation(fields: [payoutId], references: [id])
+  refundId       String?       @unique
+  refund         Refund?       @relation(fields: [refundId], references: [id], onDelete: Restrict)
+  createdAt      DateTime      @default(now())
 
   @@index([instructorId])
+  @@index([instructorId, status])
   @@index([payoutId])
   @@map("instructor_earnings")
 }
 
 model Payout {
-  id           String       @id @default(cuid())
-  instructorId String
-  instructor   User         @relation(fields: [instructorId], references: [id], onDelete: Cascade)
-  amount       Decimal      @db.Decimal(10, 2)
-  currency     String       @default("USD")
-  status       PayoutStatus @default(PENDING)
-  method       String?
-  reference    String?
-  requestedAt  DateTime     @default(now())
-  processedAt  DateTime?
+  id              String       @id @default(cuid())
+  instructorId    String
+  instructor      User         @relation("InstructorPayouts", fields: [instructorId], references: [id], onDelete: Cascade)
+  // Always equals the sum of the netAmount of the earnings reserved by this
+  // payout (server-derived — never client-supplied).
+  amount          Decimal      @db.Decimal(10, 2)
+  currency        String       @default("USD")
+  status          PayoutStatus @default(PENDING)
+  // Phase 10 payouts are SIMULATED: method is always "SIMULATED" and no
+  // bank/card details are ever collected or stored.
+  method          String?
+  // Safe public reference (LRN-PAY-XXXXXXXXXX).
+  reference       String?      @unique
+  requestedAt     DateTime     @default(now())
+  // When an admin decided the request (paid OR rejected). For a PAID payout
+  // this is the "paid at" date.
+  processedAt     DateTime?
+  processedById   String?
+  processedBy     User?        @relation("PayoutsProcessed", fields: [processedById], references: [id], onDelete: SetNull)
+  rejectionReason String?
 
   earnings InstructorEarning[]
 
@@ -596,9 +742,23 @@ model Conversation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Phase 11: a conversation is a course-related thread between ONE student
+  // and that course's instructor. UNIQUE(courseId, studentId) is the
+  // database-level guard against duplicate threads under concurrent
+  // "Message instructor" clicks. Both are nullable only so pre-Phase-11 rows
+  // (none are created by the app) remain valid.
+  courseId      String?
+  course        Course?   @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  studentId     String?
+  student       User?     @relation("ConversationStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  // Denormalised time of the newest message; drives inbox ordering without
+  // scanning messages. NULL until the first message is sent.
+  lastMessageAt DateTime?
+
   participants ConversationParticipant[]
   messages     Message[]
 
+  @@unique([courseId, studentId])
   @@map("conversations")
 }
 
@@ -617,15 +777,26 @@ model ConversationParticipant {
 }
 
 model Message {
-  id             String       @id @default(cuid())
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  senderId       String
-  sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
-  content        String
-  readAt         DateTime?
-  createdAt      DateTime     @default(now())
+  id              String       @id @default(cuid())
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId        String
+  sender          User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  content         String
+  // Unused in Phase 11: read state is tracked per participant
+  // (ConversationParticipant.lastReadAt) because conversations are 1-to-1.
+  readAt          DateTime?
+  // Client-generated idempotency key: a retried "send" carrying the same
+  // key returns the original message instead of creating a duplicate.
+  clientMessageId String?
+  createdAt       DateTime     @default(now())
+  // Phase 12 moderation tombstone: the row and its original `content` are
+  // NEVER deleted (that's the evidence in a report's snapshot); when set,
+  // the messaging UI shows "Message removed by moderation." instead of the
+  // real text to every participant (not just the reporter).
+  removedAt       DateTime?
 
+  @@unique([senderId, clientMessageId])
   // Supports cursor pagination through a conversation's history.
   @@index([conversationId, createdAt])
   @@index([senderId])
@@ -643,13 +814,46 @@ model Notification {
   type      NotificationType
   title     String
   message   String
+  // Safe INTERNAL app path only (e.g. "/student/purchases"); validated by
+  // src/lib/safe-path.ts on write and again on render. Never an external URL.
   link      String?
+  // Deduplication key for events that can be retried (payment, refund,
+  // payout, certificate, completion, moderation, message). Unique PER USER,
+  // so one event can still notify several people (student AND instructor).
+  // Never derived from the title/message text. NULL = not deduplicated.
+  eventKey  String?
   readAt    DateTime?
   createdAt DateTime         @default(now())
 
+  @@unique([userId, eventKey])
   @@index([userId, readAt])
+  @@index([userId, createdAt])
   @@index([createdAt])
   @@map("notifications")
+}
+
+// Phase 12 — per-user, per-category in-app notification preferences. One row
+// per user, created lazily with all-enabled defaults on first read/write.
+// Categories intentionally correspond to notification-events.ts, not to
+// individual NotificationType values, so payoutRequested/Paid/Rejected (all
+// stored as PAYOUT) share the single `payouts` toggle. SYSTEM and
+// ANNOUNCEMENT notifications are NOT gated by any of these — see
+// notification-service.ts's "always-on" categories — so there is no field
+// for them here.
+model NotificationPreference {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseUpdates Boolean  @default(true)
+  payments      Boolean  @default(true)
+  refunds       Boolean  @default(true)
+  payouts       Boolean  @default(true)
+  messages      Boolean  @default(true)
+  certificates  Boolean  @default(true)
+  moderation    Boolean  @default(true)
+  updatedAt     DateTime @updatedAt
+
+  @@map("notification_preferences")
 }
 
 // ---------------------------------------------------------------------------
@@ -681,21 +885,33 @@ model Certificate {
 // ---------------------------------------------------------------------------
 
 model Report {
-  id           String           @id @default(cuid())
-  reporterId   String
-  reporter     User             @relation("ReportsFiled", fields: [reporterId], references: [id], onDelete: Cascade)
-  targetType   ReportTargetType
-  targetId     String
-  reason       String
-  details      String?
-  status       ReportStatus     @default(OPEN)
-  resolvedById String?
-  resolvedBy   User?            @relation("ReportsResolved", fields: [resolvedById], references: [id])
-  resolvedAt   DateTime?
-  createdAt    DateTime         @default(now())
+  id              String           @id @default(cuid())
+  reporterId      String
+  reporter        User             @relation("ReportsFiled", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetType      ReportTargetType
+  targetId        String
+  reason          ReportReason
+  details         String?
+  // Immutable evidence captured AT REPORT TIME, so a later edit/deletion of
+  // the underlying content can't erase moderation context. Only populated
+  // for MESSAGE reports (see ReportedMessageSnapshot in
+  // src/server/dto/moderation.ts for its shape) — a REVIEW report doesn't
+  // need one because the review itself is preserved (hidden, not deleted).
+  contentSnapshot Json?
+  status          ReportStatus     @default(OPEN)
+  // The action actually taken when resolved (null for DISMISSED or while open).
+  action          ReportAction?
+  // Admin-only, bounded, NEVER shown to the reporter or the reported user.
+  adminNote       String?
+  resolvedById    String?
+  resolvedBy      User?            @relation("ReportsResolved", fields: [resolvedById], references: [id])
+  resolvedAt      DateTime?
+  createdAt       DateTime         @default(now())
 
-  @@index([status])
+  @@index([status, createdAt])
+  @@index([targetType, status])
   @@index([targetType, targetId])
+  @@index([reporterId])
   @@map("reports")
 }
 

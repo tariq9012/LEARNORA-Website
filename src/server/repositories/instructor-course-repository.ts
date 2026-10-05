@@ -1,9 +1,10 @@
 import { prisma } from "../db/client";
+import { entitledEnrollmentsCount } from "../services/enrollment-policy";
 
 const LIST_INCLUDE = {
   category: true,
-  reviews: { select: { rating: true } },
-  _count: { select: { enrollments: true, reviews: true, sections: true } },
+  reviews: { where: { hiddenAt: null }, select: { rating: true } },
+  _count: { select: { enrollments: entitledEnrollmentsCount(), reviews: true, sections: true } },
 } as const;
 
 export function findCoursesByInstructor(instructorId: string) {

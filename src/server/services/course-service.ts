@@ -130,7 +130,9 @@ export async function getCourseBySlug(slug: string): Promise<CourseDetailDTO | n
     instructorProfile: instructorData?.instructor ?? null,
     reviews,
     ratingBreakdown,
-    previewVideoUrl: course.previewAssetId ? publicAssetUrl(course.previewAssetId) : course.previewVideo,
+    previewVideoUrl: course.previewAssetId
+      ? publicAssetUrl(course.previewAssetId)
+      : course.previewVideo,
   };
 }
 

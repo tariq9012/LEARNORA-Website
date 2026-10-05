@@ -39,6 +39,8 @@ dist-ssr
 # Generated Prisma client (regenerate with `npm run db:generate`)
 src/generated/
 
-# Phase 7: local media uploads — never commit user-uploaded files.
-/storage/uploads/
-!/storage/uploads/.gitkeep
+# Local uploaded media (development storage)
+storage/
+
+# Vercel CLI link + local build output (never commit)
+.vercel

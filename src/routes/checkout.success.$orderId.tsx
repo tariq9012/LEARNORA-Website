@@ -2,8 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { CircleCheck } from "lucide-react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { Button, Card } from "@/components/ui/kit";
-import { currency } from "@/data/mock";
-import { formatMonthYear } from "@/lib/format";
+import { formatMoney, formatMonthYear } from "@/lib/format";
 import { getMyOrderFn } from "@/server/functions/checkout";
 
 export const Route = createFileRoute("/checkout/success/$orderId")({
@@ -53,7 +52,7 @@ function CheckoutSuccessPage() {
           </div>
           <div className="flex justify-between border-b border-line pb-2">
             <span className="text-muted-foreground">Amount</span>
-            <span>{currency(order.amount)}</span>
+            <span>{formatMoney(order.amount)}</span>
           </div>
           <div className="flex justify-between border-b border-line pb-2">
             <span className="text-muted-foreground">Order reference</span>

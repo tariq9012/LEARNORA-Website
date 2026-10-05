@@ -60,7 +60,7 @@ export function SiteHeader() {
                 to={roleHomePath(user.role)}
                 className="hidden items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-cream sm:flex"
               >
-                <Avatar initials={initialsOf(user.name)} size="sm" />
+                <Avatar initials={initialsOf(user.name)} src={user.avatarUrl} size="sm" />
                 <span className="max-w-[10ch] truncate">{user.name}</span>
               </Link>
               <button

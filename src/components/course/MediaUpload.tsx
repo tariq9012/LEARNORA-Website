@@ -3,6 +3,12 @@ import { File as FileIcon, Loader2, Trash2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/kit";
 import { getCsrfToken, CSRF_HEADER_NAME } from "@/lib/csrf";
+import {
+  UploadFailedError,
+  uploadMedia,
+  type UploadPhase,
+  type UploadPurpose,
+} from "@/lib/direct-upload";
 import { cn } from "@/lib/utils";
 import type { AssetDTO } from "@/server/dto/media";
 
@@ -23,15 +29,29 @@ async function parseErrorMessage(response: Response): Promise<string> {
 
 /**
  * A single upload control: shows the current asset (if any), a file
- * picker, an indeterminate "Uploading…" state (never a fabricated
- * percentage — see Phase 7 report), and a Remove button.
+ * picker, upload status, and a Remove button.
  *
- * `uploadUrl`/`removeUrl` are the instructor media API routes; this
- * component doesn't know or care about course/lesson ids beyond that.
+ * Phase 18: with R2 storage the file goes straight from the browser to R2
+ * (intent → PUT → finalize, see src/lib/direct-upload.ts) and the percentage is
+ * the real byte progress of that PUT. With local storage the server answers
+ * "mode: server" and the existing multipart route at `uploadUrl` is used (no
+ * reliable progress there, so the bar stays indeterminate). "Upload complete"
+ * is only ever shown after the server has verified and attached the file.
+ *
+ * `removeUrl` is the existing instructor media DELETE route (unchanged).
  */
+const PHASE_LABEL: Record<UploadPhase, string> = {
+  preparing: "Preparing upload…",
+  uploading: "Uploading…",
+  finalizing: "Finalizing…",
+};
+
 export function MediaUploadField({
   label,
   accept,
+  purpose,
+  courseId,
+  lessonId,
   uploadUrl,
   removeUrl,
   current,
@@ -41,6 +61,10 @@ export function MediaUploadField({
 }: {
   label: string;
   accept: string;
+  purpose: UploadPurpose;
+  courseId?: string;
+  lessonId?: string;
+  /** Legacy multipart route — only used when storage is local (development). */
   uploadUrl: string;
   removeUrl: string;
   current: AssetDTO | null;
@@ -48,41 +72,57 @@ export function MediaUploadField({
   extraFields?: Record<string, string>;
   disabled?: boolean;
 }) {
-  const [busy, setBusy] = useState(false);
+  const [phase, setPhase] = useState<UploadPhase | null>(null);
+  const [progress, setProgress] = useState<number | null>(null);
+  const [removing, setRemoving] = useState(false);
   const [error, setError] = useState("");
+  const [failedFile, setFailedFile] = useState<File | null>(null);
+  const [justUploaded, setJustUploaded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const busy = phase !== null || removing;
 
   async function handleFileChosen(file: File) {
-    setBusy(true);
+    if (phase !== null) return; // never start a second upload while one is running
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setPhase("preparing");
+    setProgress(null);
     setError("");
+    setFailedFile(null);
+    setJustUploaded(false);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      for (const [key, value] of Object.entries(extraFields ?? {})) {
-        formData.append(key, value);
-      }
-      const response = await fetch(uploadUrl, {
-        method: "POST",
-        headers: { [CSRF_HEADER_NAME]: getCsrfToken() },
-        body: formData,
+      const asset = await uploadMedia<AssetDTO>({
+        file,
+        purpose,
+        ...(courseId && { courseId }),
+        ...(lessonId && { lessonId }),
+        legacy: { url: uploadUrl, ...(extraFields && { fields: extraFields }) },
+        onPhase: (p) => {
+          setPhase(p);
+          if (p !== "uploading") setProgress(null);
+        },
+        onProgress: setProgress,
+        signal: controller.signal,
       });
-      if (!response.ok) {
-        setError(await parseErrorMessage(response));
-        return;
-      }
-      const asset = (await response.json()) as AssetDTO;
       onChange(asset);
-    } catch {
-      setError("Upload failed. Check your connection and try again.");
+      setJustUploaded(true);
+    } catch (e) {
+      setError(e instanceof UploadFailedError ? e.message : "Upload failed. Please try again.");
+      setFailedFile(file);
     } finally {
-      setBusy(false);
+      abortRef.current = null;
+      setPhase(null);
+      setProgress(null);
       if (inputRef.current) inputRef.current.value = "";
     }
   }
 
   async function handleRemove() {
-    setBusy(true);
+    setRemoving(true);
     setError("");
+    setJustUploaded(false);
+    setFailedFile(null);
     try {
       const response = await fetch(removeUrl, {
         method: "DELETE",
@@ -94,7 +134,7 @@ export function MediaUploadField({
       }
       onChange(null);
     } finally {
-      setBusy(false);
+      setRemoving(false);
     }
   }
 
@@ -142,8 +182,24 @@ export function MediaUploadField({
             onClick={() => inputRef.current?.click()}
           >
             {busy ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-            {busy ? "Uploading…" : current ? "Replace" : "Upload"}
+            {phase === "uploading" && progress !== null
+              ? `Uploading ${Math.round(progress * 100)}%`
+              : phase
+                ? PHASE_LABEL[phase]
+                : current
+                  ? "Replace"
+                  : "Upload"}
           </Button>
+          {phase !== null && phase !== "finalizing" && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => abortRef.current?.abort()}
+            >
+              Cancel
+            </Button>
+          )}
         </div>
         <input
           ref={inputRef}
@@ -157,7 +213,41 @@ export function MediaUploadField({
           }}
         />
       </div>
-      {error && <p className="mt-1.5 text-xs text-destructive">{error}</p>}
+      {phase === "uploading" && (
+        <div
+          className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-panel-2"
+          role="progressbar"
+          aria-label="Upload progress"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          {...(progress !== null && { "aria-valuenow": Math.round(progress * 100) })}
+        >
+          <div
+            className={cn(
+              "h-full bg-brand-soft transition-[width]",
+              progress === null && "w-1/3 animate-pulse",
+            )}
+            style={progress !== null ? { width: `${Math.round(progress * 100)}%` } : undefined}
+          />
+        </div>
+      )}
+      {justUploaded && !error && phase === null && (
+        <p className="mt-1.5 text-xs text-muted-foreground">Upload complete.</p>
+      )}
+      {error && (
+        <p className="mt-1.5 text-xs text-destructive">
+          {error}{" "}
+          {failedFile && !busy && (
+            <button
+              type="button"
+              className="underline underline-offset-2"
+              onClick={() => void handleFileChosen(failedFile)}
+            >
+              Retry
+            </button>
+          )}
+        </p>
+      )}
     </div>
   );
 }

@@ -33,7 +33,6 @@ import {
 import { VideoPlayerPlaceholder } from "@/components/course/VideoPlayerPlaceholder";
 import { CourseCurriculum } from "@/components/course/CourseCurriculum";
 import { ReviewCard } from "@/components/course/ReviewCard";
-import { currency } from "@/data/mock";
 import { getCourseBySlugFn } from "@/server/functions/catalog";
 import {
   enrollInCourseFn,
@@ -49,6 +48,7 @@ import {
   updateCourseReviewFn,
 } from "@/server/functions/review";
 import type { MyReviewStateDTO } from "@/server/dto/review";
+import { formatPrice } from "@/lib/format";
 
 export const Route = createFileRoute("/courses/$courseId")({
   loader: async ({ params }) => {
@@ -225,7 +225,7 @@ function CourseDetail() {
                 params={{ instructorId: instructor.id }}
                 className="mt-6 inline-flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-panel"
               >
-                <Avatar initials={instructor.initials} />
+                <Avatar initials={instructor.initials} src={instructor.avatarUrl} />
                 <span>
                   <span className="block text-sm font-medium">{instructor.name}</span>
                   <span className="block font-mono text-[11px] text-muted-foreground">
@@ -249,10 +249,10 @@ function CourseDetail() {
           <aside>
             <Card className="lg:sticky lg:top-24 p-5">
               <div className="flex items-baseline gap-3">
-                <span className="font-display text-3xl">{currency(course.price)}</span>
+                <span className="font-display text-3xl">{formatPrice(course.price)}</span>
                 {course.originalPrice && (
                   <span className="text-muted-foreground line-through">
-                    {currency(course.originalPrice)}
+                    {formatPrice(course.originalPrice)}
                   </span>
                 )}
                 {discount && <Badge tone="brand">-{discount}%</Badge>}
@@ -346,7 +346,7 @@ function CourseDetail() {
               <h2 className="font-display text-2xl tracking-tight">Your instructor</h2>
               <Card className="mt-5 p-6">
                 <div className="flex flex-wrap items-start gap-5">
-                  <Avatar initials={instructor.initials} size="xl" />
+                  <Avatar initials={instructor.initials} src={instructor.avatarUrl} size="xl" />
                   <div className="min-w-0 flex-1">
                     <h3 className="font-display text-xl tracking-tight">{instructor.name}</h3>
                     <p className="font-mono text-[11px] text-muted-foreground">
@@ -413,7 +413,14 @@ function CourseDetail() {
             {course.reviews.length > 0 ? (
               <div className="mt-5 grid gap-4 md:grid-cols-2">
                 {course.reviews.map((r) => (
-                  <ReviewCard key={r.id} review={r} />
+                  <ReviewCard
+                    key={r.id}
+                    review={r}
+                    reviewId={r.id}
+                    canReport={
+                      !(myReview.state === "already_reviewed" && myReview.review.id === r.id)
+                    }
+                  />
                 ))}
               </div>
             ) : (

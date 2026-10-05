@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { assertServerMediatedUploadAllowed } from "@/server/media/direct-upload-service";
 
 import { requireApprovedInstructorWithCsrf } from "@/server/auth/instructor-guard";
 import {
@@ -17,6 +18,9 @@ export const Route = createFileRoute("/api/instructor/media/preview/$courseId")(
       POST: async ({ request, params }) => {
         try {
           const instructor = await requireApprovedInstructorWithCsrf();
+          // Phase 18: with R2 the file goes browser -> R2 directly (/api/media/upload-intent);
+          // this server must never proxy a large body in that mode.
+          assertServerMediatedUploadAllowed();
           const uploaded = await receiveMultipartUpload(request, {
             maxBytes: MAX_SIZE_BYTES.COURSE_PREVIEW,
             deriveStorageKey: ({ filename, mimeType }) => {

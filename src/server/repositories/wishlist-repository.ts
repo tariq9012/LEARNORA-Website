@@ -1,4 +1,5 @@
 import { prisma } from "../db/client";
+import { entitledEnrollmentsCount } from "../services/enrollment-policy";
 
 export function findWishlistItem(userId: string, courseId: string) {
   return prisma.wishlist.findUnique({ where: { userId_courseId: { userId, courseId } } });
@@ -26,8 +27,8 @@ export function listWishlistForUser(userId: string) {
         include: {
           category: true,
           instructor: true,
-          reviews: { select: { rating: true } },
-          _count: { select: { enrollments: true, reviews: true } },
+          reviews: { where: { hiddenAt: null }, select: { rating: true } },
+          _count: { select: { enrollments: entitledEnrollmentsCount(), reviews: true } },
           sections: { select: { lessons: { select: { duration: true } } } },
         },
       },

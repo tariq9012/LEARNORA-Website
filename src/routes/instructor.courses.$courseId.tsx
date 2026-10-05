@@ -15,6 +15,7 @@ import {
 import { DashboardLayout, DashboardHeader } from "@/components/layout/DashboardLayout";
 import { MediaUploadField } from "@/components/course/MediaUpload";
 import { getCsrfToken, CSRF_HEADER_NAME } from "@/lib/csrf";
+import { UploadFailedError, uploadMedia, type UploadPhase } from "@/lib/direct-upload";
 import {
   Badge,
   Button,
@@ -392,6 +393,8 @@ function MetadataCard({
       <div className="mt-6 grid gap-5 border-t border-line pt-6 sm:grid-cols-2">
         <MediaUploadField
           label="Course thumbnail"
+          purpose="COURSE_THUMBNAIL"
+          courseId={course.id}
           accept="image/jpeg,image/png,image/webp"
           uploadUrl={`/api/instructor/media/thumbnail/${course.id}`}
           removeUrl={`/api/instructor/media/thumbnail/${course.id}`}
@@ -400,6 +403,8 @@ function MetadataCard({
         />
         <MediaUploadField
           label="Preview video"
+          purpose="COURSE_PREVIEW"
+          courseId={course.id}
           accept="video/mp4,video/webm"
           uploadUrl={`/api/instructor/media/preview/${course.id}`}
           removeUrl={`/api/instructor/media/preview/${course.id}`}
@@ -806,29 +811,40 @@ function LessonMediaPanel({
   onChange: () => Promise<void>;
 }) {
   const [resourceTitle, setResourceTitle] = useState("");
-  const [uploadingResource, setUploadingResource] = useState(false);
+  const [resourcePhase, setResourcePhase] = useState<UploadPhase | null>(null);
+  const [resourceProgress, setResourceProgress] = useState<number | null>(null);
   const [resourceError, setResourceError] = useState("");
+  const uploadingResource = resourcePhase !== null;
 
   async function uploadResource(file: File) {
-    setUploadingResource(true);
+    if (uploadingResource) return;
+    setResourcePhase("preparing");
+    setResourceProgress(null);
     setResourceError("");
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("title", resourceTitle.trim() || file.name);
-      const response = await fetch(
-        `/api/instructor/media/lesson-resource/${courseId}/${lessonId}`,
-        { method: "POST", headers: { [CSRF_HEADER_NAME]: getCsrfToken() }, body: formData },
-      );
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { error?: string } | null;
-        setResourceError(body?.error ?? "Upload failed.");
-        return;
-      }
+      await uploadMedia({
+        file,
+        purpose: "LESSON_RESOURCE",
+        courseId,
+        lessonId,
+        title: resourceTitle.trim() || file.name,
+        legacy: {
+          url: `/api/instructor/media/lesson-resource/${courseId}/${lessonId}`,
+          fields: { title: resourceTitle.trim() || file.name },
+        },
+        onPhase: (p) => {
+          setResourcePhase(p);
+          if (p !== "uploading") setResourceProgress(null);
+        },
+        onProgress: setResourceProgress,
+      });
       setResourceTitle("");
       await onChange();
+    } catch (e) {
+      setResourceError(e instanceof UploadFailedError ? e.message : "Upload failed.");
     } finally {
-      setUploadingResource(false);
+      setResourcePhase(null);
+      setResourceProgress(null);
     }
   }
 
@@ -845,6 +861,9 @@ function LessonMediaPanel({
       {lessonType === "VIDEO" && (
         <MediaUploadField
           label="Lesson video"
+          purpose="LESSON_VIDEO"
+          courseId={courseId}
+          lessonId={lessonId}
           accept="video/mp4,video/webm"
           uploadUrl={`/api/instructor/media/lesson-video/${courseId}/${lessonId}`}
           removeUrl={`/api/instructor/media/lesson-video/${courseId}/${lessonId}`}
@@ -906,7 +925,15 @@ function LessonMediaPanel({
               disabled={uploadingResource}
               onClick={() => document.getElementById(`resource-upload-${lessonId}`)?.click()}
             >
-              {uploadingResource ? "Uploading…" : "Add resource"}
+              {resourcePhase === "uploading" && resourceProgress !== null
+                ? `Uploading ${Math.round(resourceProgress * 100)}%`
+                : resourcePhase === "preparing"
+                  ? "Preparing upload…"
+                  : resourcePhase === "finalizing"
+                    ? "Finalizing…"
+                    : resourcePhase === "uploading"
+                      ? "Uploading…"
+                      : "Add resource"}
             </Button>
           </label>
         </div>
