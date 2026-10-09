@@ -1,3 +1,5 @@
+import { RateLimitExceededError } from "../auth/rate-limit";
+import { log } from "../lib/log";
 import { ForbiddenError, UnauthorizedError } from "../auth/guards";
 import { CsrfError } from "../auth/csrf";
 import { MediaValidationError } from "./media-config";
@@ -10,6 +12,12 @@ import { UploadIntentError, UploadNotFoundError } from "./direct-upload-errors";
 export function mediaErrorResponse(error: unknown): Response {
   if (error instanceof UnauthorizedError) {
     return Response.json({ error: error.message }, { status: 401 });
+  }
+  if (error instanceof RateLimitExceededError) {
+    return Response.json(
+      { error: error.message },
+      { status: 429, headers: { "Retry-After": String(error.retryAfterSeconds) } },
+    );
   }
   if (error instanceof ForbiddenError || error instanceof CsrfError) {
     return Response.json({ error: error.message }, { status: 403 });
@@ -26,7 +34,7 @@ export function mediaErrorResponse(error: unknown): Response {
   ) {
     return Response.json({ error: error.message }, { status: 400 });
   }
-  console.error("[media] unexpected error", error);
+  log.error("media.unexpected_error", error);
   return Response.json({ error: "Something went wrong. Please try again." }, { status: 500 });
 }
 

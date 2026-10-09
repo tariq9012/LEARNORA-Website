@@ -147,7 +147,7 @@ export async function getOrCreateCourseConversation(
       "Only students can start a conversation with an instructor.",
     );
   }
-  enforceRateLimit(
+  await enforceRateLimit(
     `conv:${user.id}`,
     CONVERSATION_RATE_LIMIT.limit,
     CONVERSATION_RATE_LIMIT.windowMs,
@@ -321,7 +321,7 @@ export async function sendMessage(user: SafeUser, input: unknown): Promise<Messa
   assertMessagingRole(user);
   // Re-validated here so the service is safe even if called without the server-function validator.
   const data = sendMessageSchema.parse(input);
-  enforceRateLimit(`msg:${user.id}`, MESSAGE_RATE_LIMIT.limit, MESSAGE_RATE_LIMIT.windowMs);
+  await enforceRateLimit(`msg:${user.id}`, MESSAGE_RATE_LIMIT.limit, MESSAGE_RATE_LIMIT.windowMs);
 
   const row = await conversationRepository.findForParticipant(user.id, data.conversationId);
   if (!row) throw notFound();

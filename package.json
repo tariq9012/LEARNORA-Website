@@ -27,6 +27,7 @@
     "verify:phase15:security": "tsx scripts/verify-phase15-security.ts",
     "verify:phase16": "tsx scripts/verify-phase16.ts",
     "verify:phase18": "tsx scripts/verify-phase18.ts",
+    "verify:phase20": "tsx scripts/verify-phase20.ts",
     "verify:phase19": "tsx scripts/verify-phase19.ts",
     "verify:phase19:http": "tsx scripts/verify-phase19-http.ts",
     "verify:phase18:local": "tsx scripts/verify-phase18.ts local",

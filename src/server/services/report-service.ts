@@ -76,7 +76,7 @@ async function createReport(
 /** A user reports a review. Cannot report your own review; cannot duplicate an already-open report. */
 export async function reportReview(user: SafeUser, input: unknown): Promise<void> {
   const data = reportReviewSchema.parse(input);
-  enforceRateLimit(`report:${user.id}`, REPORT_RATE_LIMIT.limit, REPORT_RATE_LIMIT.windowMs);
+  await enforceRateLimit(`report:${user.id}`, REPORT_RATE_LIMIT.limit, REPORT_RATE_LIMIT.windowMs);
 
   const review = await reviewRepository.findReviewById(data.reviewId);
   if (!review) throw new ReportError("TARGET_NOT_FOUND", "Review not found.");
@@ -95,7 +95,7 @@ export async function reportReview(user: SafeUser, input: unknown): Promise<void
  */
 export async function reportMessage(user: SafeUser, input: unknown): Promise<void> {
   const data = reportMessageSchema.parse(input);
-  enforceRateLimit(`report:${user.id}`, REPORT_RATE_LIMIT.limit, REPORT_RATE_LIMIT.windowMs);
+  await enforceRateLimit(`report:${user.id}`, REPORT_RATE_LIMIT.limit, REPORT_RATE_LIMIT.windowMs);
 
   const message = await conversationRepository.findMessageForReport(data.messageId);
   if (!message) throw new ReportError("TARGET_NOT_FOUND", "Message not found.");

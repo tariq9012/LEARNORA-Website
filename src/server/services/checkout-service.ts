@@ -18,6 +18,7 @@ import type {
   AdminOrderListDTO,
   AdminPaymentSummaryDTO,
 } from "../dto/checkout";
+import { enforceRateLimit } from "../auth/rate-limit";
 import type { BillingSummaryDTO } from "../dto/account";
 
 export class CheckoutError extends Error {}
@@ -131,6 +132,7 @@ export async function createCheckoutOrder(
   user: SafeUser,
   courseSlug: string,
 ): Promise<OrderSummaryDTO> {
+  await enforceRateLimit(`checkout:${user.id}`, 30, 10 * 60 * 1000);
   const course = await loadPurchasableCourse(courseSlug);
   if (Number(course.price) === 0) throw new CourseIsFreeError();
   await assertNotAlreadyEntitled(user.id, course.id);

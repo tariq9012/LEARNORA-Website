@@ -1,5 +1,5 @@
-# Logs
-logs
+# Logs (anchored: an unanchored `logs` would also ignore any src/**/logs folder)
+/logs
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -8,12 +8,12 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist
-dist-ssr
-.output
+/dist
+/dist-ssr
+/.output
 .vinxi
 .tanstack/**
-.nitro
+/.nitro
 *.local
 
 # Wrangler / Cloudflare
@@ -39,8 +39,10 @@ dist-ssr
 # Generated Prisma client (regenerate with `npm run db:generate`)
 src/generated/
 
-# Local uploaded media (development storage)
-storage/
+# Local uploaded media (development storage). ANCHORED to the repo root: the old
+# unanchored `storage/` also matched src/server/storage/ and silently ignored new
+# files there (that is how s3-storage-provider.ts went missing from Vercel).
+/storage/
 
 # Vercel CLI link + local build output (never commit)
 .vercel

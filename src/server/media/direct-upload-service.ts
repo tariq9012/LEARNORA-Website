@@ -16,6 +16,7 @@
 import { z } from "zod";
 
 import { ForbiddenError } from "../auth/guards";
+import { enforceRateLimit } from "../auth/rate-limit";
 import type { ApprovedInstructor } from "../auth/instructor-guard";
 import type { SafeUser } from "../auth/types";
 import { prisma } from "../db/client";
@@ -134,6 +135,9 @@ export async function createUploadIntent(
 
   // Defence in depth: the route already ran the right guard for this purpose.
   if (input.purpose !== "AVATAR" && !isApprovedInstructor(actor)) throw new ForbiddenError();
+
+  // Phase 20: each intent is a database row plus a signature; cap how fast one account can mint them.
+  await enforceRateLimit(`upload-intent:${actor.id}`, 100, 10 * 60 * 1000);
 
   if (!isDirectUploadEnabled()) return { mode: "server" };
 
@@ -412,6 +416,7 @@ export async function finalizeUpload(params: {
 }): Promise<FinalizedUpload> {
   const { user, intentId } = params;
   const now = params.now ?? new Date();
+  await enforceRateLimit(`upload-finalize:${user.id}`, 200, 10 * 60 * 1000);
 
   // 1. The intent must exist AND belong to the caller — never a client-supplied key.
   const intent = await intentRepository.findUploadIntentForUser(intentId, user.id);

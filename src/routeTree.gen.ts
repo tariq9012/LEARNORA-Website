@@ -39,6 +39,7 @@ import { Route as AdminReportsRouteImport } from './routes/admin.reports'
 import { Route as AdminReviewsRouteImport } from './routes/admin.reviews'
 import { Route as AdminStudentsRouteImport } from './routes/admin.students'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as ApiCspReportRouteImport } from './routes/api.csp-report'
 import { Route as ApiEventsRouteImport } from './routes/api.events'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ApiReadyRouteImport } from './routes/api.ready'
@@ -236,6 +237,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => AdminRoute,
+} as any)
+const ApiCspReportRoute = ApiCspReportRouteImport.update({
+  id: '/api/csp-report',
+  path: '/api/csp-report',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiEventsRoute = ApiEventsRouteImport.update({
   id: '/api/events',
@@ -511,6 +517,7 @@ export interface FileRoutesByFullPath {
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/csp-report': typeof ApiCspReportRoute
   '/api/events': typeof ApiEventsRoute
   '/api/health': typeof ApiHealthRoute
   '/api/ready': typeof ApiReadyRoute
@@ -587,6 +594,7 @@ export interface FileRoutesByTo {
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/csp-report': typeof ApiCspReportRoute
   '/api/events': typeof ApiEventsRoute
   '/api/health': typeof ApiHealthRoute
   '/api/ready': typeof ApiReadyRoute
@@ -667,6 +675,7 @@ export interface FileRoutesById {
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/csp-report': typeof ApiCspReportRoute
   '/api/events': typeof ApiEventsRoute
   '/api/health': typeof ApiHealthRoute
   '/api/ready': typeof ApiReadyRoute
@@ -748,6 +757,7 @@ export interface FileRouteTypes {
     | '/admin/reviews'
     | '/admin/students'
     | '/admin/users'
+    | '/api/csp-report'
     | '/api/events'
     | '/api/health'
     | '/api/ready'
@@ -824,6 +834,7 @@ export interface FileRouteTypes {
     | '/admin/reviews'
     | '/admin/students'
     | '/admin/users'
+    | '/api/csp-report'
     | '/api/events'
     | '/api/health'
     | '/api/ready'
@@ -903,6 +914,7 @@ export interface FileRouteTypes {
     | '/admin/reviews'
     | '/admin/students'
     | '/admin/users'
+    | '/api/csp-report'
     | '/api/events'
     | '/api/health'
     | '/api/ready'
@@ -970,6 +982,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   StudentRoute: typeof StudentRouteWithChildren
   TermsRoute: typeof TermsRoute
+  ApiCspReportRoute: typeof ApiCspReportRoute
   ApiEventsRoute: typeof ApiEventsRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiReadyRoute: typeof ApiReadyRoute
@@ -1203,6 +1216,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/users'
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/api/csp-report': {
+      id: '/api/csp-report'
+      path: '/api/csp-report'
+      fullPath: '/api/csp-report'
+      preLoaderRoute: typeof ApiCspReportRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/events': {
       id: '/api/events'
@@ -1672,6 +1692,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   StudentRoute: StudentRouteWithChildren,
   TermsRoute: TermsRoute,
+  ApiCspReportRoute: ApiCspReportRoute,
   ApiEventsRoute: ApiEventsRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiReadyRoute: ApiReadyRoute,

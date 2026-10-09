@@ -29,7 +29,7 @@ function requestIp(): string {
  * accepted value — see registerSchema.
  */
 export async function registerUser(input: unknown): Promise<SafeUser> {
-  enforceRateLimit(`register:${requestIp()}`, 10, 60 * 60 * 1000);
+  await enforceRateLimit(`register:${requestIp()}`, 10, 60 * 60 * 1000);
 
   const data = registerSchema.parse(input);
 
@@ -58,8 +58,8 @@ export async function registerUser(input: unknown): Promise<SafeUser> {
  */
 export async function login(input: unknown): Promise<SafeUser> {
   const data = loginSchema.parse(input);
-  enforceRateLimit(`login:${requestIp()}`, 20, 15 * 60 * 1000);
-  enforceRateLimit(`login:${data.email}`, 10, 15 * 60 * 1000);
+  await enforceRateLimit(`login:${requestIp()}`, 20, 15 * 60 * 1000);
+  await enforceRateLimit(`login:${data.email}`, 10, 15 * 60 * 1000);
 
   const user = await userRepository.findUserByEmail(data.email);
   const passwordIsValid = await verifyPassword(
@@ -94,7 +94,7 @@ export async function logout(): Promise<void> {
  * configured provider (console in development, Resend in production).
  */
 export async function requestPasswordReset(input: unknown): Promise<{ message: string }> {
-  enforceRateLimit(`forgot-password:${requestIp()}`, 5, 15 * 60 * 1000);
+  await enforceRateLimit(`forgot-password:${requestIp()}`, 5, 15 * 60 * 1000);
 
   const { email } = forgotPasswordSchema.parse(input);
   const user = await userRepository.findUserByEmail(email);
@@ -125,7 +125,7 @@ export async function requestPasswordReset(input: unknown): Promise<{ message: s
  * (anyone with an old session cookie is signed out).
  */
 export async function resetPassword(input: unknown): Promise<{ message: string }> {
-  enforceRateLimit(`reset-password:${requestIp()}`, 10, 60 * 60 * 1000);
+  await enforceRateLimit(`reset-password:${requestIp()}`, 10, 60 * 60 * 1000);
 
   const data = resetPasswordSchema.parse(input);
   const tokenHash = hashOpaqueToken(data.token);

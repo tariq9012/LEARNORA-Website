@@ -6,6 +6,7 @@ import { toOrderSummaryDTO, OrderNotFoundError } from "./checkout-service";
 import { getPaymentProvider } from "../payments";
 import { computeEarningSplit } from "../config/finance-policy";
 import { notifyPaymentSucceeded } from "./notification-events";
+import { enforceRateLimit } from "../auth/rate-limit";
 import type { SafeUser } from "../auth/types";
 import type { OrderSummaryDTO } from "../dto/checkout";
 
@@ -50,6 +51,7 @@ export async function confirmTestPayment(
   orderId: string,
   options?: { simulateFailure?: boolean },
 ): Promise<OrderSummaryDTO> {
+  await enforceRateLimit(`pay:${user.id}`, 30, 10 * 60 * 1000);
   const order = await orderRepository.findOrderById(orderId);
   if (!order || order.userId !== user.id) throw new OrderNotFoundError();
 

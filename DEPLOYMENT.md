@@ -45,7 +45,7 @@ No `vercel.json` is needed: Vercel detects TanStack Start with the Nitro plugin 
    (see section 5). **This only works after you add the R2 CORS rule in section 5**; without it the browser
    blocks the upload. The old server-mediated upload routes deliberately refuse requests in R2 mode.
    Limits are unchanged: avatar 3 MB, thumbnail 5 MB, resource 50 MB, preview 100 MB, lesson video 500 MB.
-2. **Rate limiting is per server instance.** It is in memory, so it is not shared across Vercel instances.
+2. **Rate limiting is shared across instances since Phase 20** (counters live in your Neon database, table `rate_limit_buckets`). It costs one small query per limited request, uses fixed windows (a short burst at a window boundary is possible), and falls back to per-instance counting if the database is unreachable. It is **not** a DDoS shield: use Vercel Firewall for volumetric abuse.
    Treat it as a basic brake, not production-wide protection.
 3. **Live push (SSE) is switched off by default on Vercel (Phase 19).** An in-memory broker cannot reach other
    instances, and every open stream would occupy a function invocation. On Vercel `/api/events` answers `204`
@@ -92,13 +92,13 @@ Copy `.env.example` for local work. **Never commit `.env`.** Never prefix any of
 
 **Which Vercel environment gets what**
 
-| Variable group                                                      | Production | Preview                                   | Development (`vercel dev`) |
-| ------------------------------------------------------------------- | ---------- | ----------------------------------------- | -------------------------- |
-| `DATABASE_URL`, `DIRECT_URL`                                        | Neon prod  | A **separate Neon branch**, never prod    | Local PostgreSQL           |
-| `SESSION_SECRET`, `CRON_SECRET`                                     | unique     | **different** values from Production      | local values               |
-| `APP_URL`                                                           | prod URL   | usually leave unset or use the preview URL | `http://localhost:3000`    |
-| `S3_*`, `STORAGE_PROVIDER=s3`                                       | prod bucket | a **separate bucket** (or no uploads)     | dev bucket or `local`      |
-| `EMAIL_PROVIDER`, `GMAIL_*`                                         | gmail      | optional                                  | `console`                  |
+| Variable group                  | Production  | Preview                                    | Development (`vercel dev`) |
+| ------------------------------- | ----------- | ------------------------------------------ | -------------------------- |
+| `DATABASE_URL`, `DIRECT_URL`    | Neon prod   | A **separate Neon branch**, never prod     | Local PostgreSQL           |
+| `SESSION_SECRET`, `CRON_SECRET` | unique      | **different** values from Production       | local values               |
+| `APP_URL`                       | prod URL    | usually leave unset or use the preview URL | `http://localhost:3000`    |
+| `S3_*`, `STORAGE_PROVIDER=s3`   | prod bucket | a **separate bucket** (or no uploads)      | dev bucket or `local`      |
+| `EMAIL_PROVIDER`, `GMAIL_*`     | gmail       | optional                                   | `console`                  |
 
 Preview deployments run production code. If a Preview shared the production database or bucket, a test click could
 change real data, so give it its own. Only the **Production** environment needs the production values.
@@ -353,7 +353,7 @@ Mark each as you do it. Items marked ⚠ relate to the known issue in section 2.
 | Phase 18 browser upload client executed in Node (26 checks: phases, progress, cancel, retry, failed PUT never finalizes) — XHR is a shim | EXECUTED PASS (local, fake S3)   |
 | Real browser upload through real CORS; presigned URLs accepted by real Cloudflare R2                                                     | NOT TESTED (needs your R2)       |
 | `prisma migrate deploy` against Neon, Vercel deploy, Gmail delivery                                                                      | NOT TESTED (needs your accounts) |
-| Phase 19: cron auth, SSE switch, env vars, background helper, LOCAL→S3 tool (39 checks) + over HTTP on the built app (16 checks)          | EXECUTED PASS (local, fake S3)   |
+| Phase 19: cron auth, SSE switch, env vars, background helper, LOCAL→S3 tool (39 checks) + over HTTP on the built app (16 checks)         | EXECUTED PASS (local, fake S3)   |
 | Phase 19: Vercel preset build registers the daily cron in `.vercel/output/config.json`                                                   | EXECUTED PASS (local build)      |
 | Real Vercel Cron call, real Vercel `waitUntil` email delivery                                                                            | NOT TESTED (needs your Vercel)   |
 | Browser click-through of all roles                                                                                                       | NOT TESTED                       |
@@ -372,3 +372,35 @@ npm run verify:phase18:local    # STORAGE_PROVIDER=local keeps the old flow
 `npm run verify:phase18:client` runs the real browser upload code in Node (with an `XMLHttpRequest` shim) against the running build; it needs the same setup as `:http`.
 
 `npm run verify:phase18:http` drives a running production build over HTTP; it needs the app started with the same `S3_*` variables as the script and `SERVER_PID` set (see the comment at the top of `scripts/verify-phase18-http.ts`).
+
+## 12. Phase 20 hardening: what changed and how to roll it out
+
+**Order matters (do this first):** this release adds ONE migration, `20261006120000_rate_limit_buckets` (a new table, nothing existing is touched). Apply it **before** the new code goes live:
+
+```powershell
+$env:DATABASE_URL = "<NEON_POOLED_URL>"
+$env:DIRECT_URL   = "<NEON_DIRECT_URL>"
+npm run db:generate
+npm run db:migrate:deploy        # expected: 1 new migration applied
+Remove-Item Env:DATABASE_URL, Env:DIRECT_URL
+```
+
+If you deploy the code first, nothing breaks: the limiter logs `ratelimit.store_unavailable`, uses per-instance counters, and starts sharing as soon as the table exists. Never run `migrate reset` or `db push`.
+
+**Git: the file that went missing on Vercel.** `.gitignore` used to contain `storage/`, which also matched `src/server/storage/`, so any NEW file there (that is how `s3-storage-provider.ts` went missing) was silently ignored. The rules are now anchored to the repo root (`/storage/`, `/logs`, `/dist`, ...). Before pushing, run `git status` and `git add` every new file, then check `git ls-files -ci --exclude-standard` prints nothing.
+
+**Content-Security-Policy ships in REPORT-ONLY mode (`CSP_MODE`, default `report-only`).** It was not tested in a real browser here, so it does not block anything yet. To turn it on safely:
+
+1. Deploy, open the site in Chrome, DevTools -> Console. Click through: home, a course, login, a lesson with video, the instructor upload page (upload a small image), checkout.
+2. Any "Content Security Policy" warning there (or a `csp.violation` line in Vercel logs) names what would be blocked. No warnings = safe.
+3. Set `CSP_MODE=enforce` in Vercel Production and redeploy. If anything breaks, set it back to `report-only` (no code change needed).
+
+Honest limits: the policy still needs `script-src 'unsafe-inline'` because TanStack Start streams inline bootstrap scripts into every page, so CSP will NOT stop injected inline script. It has no `unsafe-eval`, blocks framing, plugins and base-tag injection, and allows direct uploads only to your R2 origin (taken from `S3_ENDPOINT`). HSTS (`max-age=31536000; includeSubDomains`) is sent only in production over HTTPS. Moving to nonces is future work.
+
+**Rate limits now in place** (per account or per IP, shared across instances): login (IP and email), register, forgot/reset password, change password, messages and new conversations, reports, upload intent (100 / 10 min), upload finalize (200 / 10 min), checkout (30 / 10 min), payment confirm (30 / 10 min), reviews (30 / hour). Blocked requests get a clear message (server functions) or `429` + `Retry-After` (media routes). Admin mutations are not rate limited (admin-only, authenticated). The daily cron also deletes expired limiter rows.
+
+**Health endpoints.** `GET /api/health` = the process is alive (always 200, touches nothing). `GET /api/ready` = configuration parses AND the database answers `SELECT 1` within 2 s (503 otherwise, naming only which check failed). Neither calls R2 or Gmail on purpose (cost and side effects). Do not point a 1-minute uptime monitor at `/api/ready` on a free Neon plan if you want the database to be able to scale to zero.
+
+**Logs (what you get and what you do not).** Server logs are one JSON line per event (`event`, safe fields, `requestId` on cron), e.g. `ratelimit.store_unavailable`, `csp.violation`, `cron.cleanup_uploads`, `media.unexpected_error`, `server.unhandled_error`. Errors log name, code and two stack frames, never the message; connection strings, presigned signatures, bearer tokens and `token=`/`password=` values are scrubbed. In Vercel: project -> **Logs** (search by event name). Vercel keeps logs for a limited time that depends on your plan. You do NOT have alerting, dashboards, tracing or error aggregation: that needs a monitoring service (not added, no paid services without your approval).
+
+**Lockfile.** The committed `package-lock.json` was out of sync (`npm ci` failed on `ajv`). It is re-synced; only `ajv` / `json-schema-traverse` were re-nested, no TanStack or other versions moved.

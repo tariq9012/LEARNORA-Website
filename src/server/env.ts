@@ -75,6 +75,14 @@ const envSchema = z
         )
         .optional(),
     ),
+    // Phase 20: Content-Security-Policy mode. "report-only" (default) logs
+    // violations in the browser console without blocking anything; "enforce"
+    // blocks; "off" sends no CSP. Read by src/server.ts. Promote to "enforce"
+    // after a clean browser pass (see DEPLOYMENT.md).
+    CSP_MODE: z.preprocess(
+      blankToUndefined,
+      z.enum(["enforce", "report-only", "off"]).default("report-only"),
+    ),
     // Phase 19: shared secret that authorizes scheduled-job endpoints (Vercel
     // Cron sends it as `Authorization: Bearer <CRON_SECRET>` automatically when
     // this variable exists). Unset = the cron endpoint answers 503 and does

@@ -90,14 +90,70 @@ export interface Course {
 }
 
 export const categories: Category[] = [
-  { id: "c1", slug: "web-development", name: "Web Development", blurb: "Frontend to full-stack", courseCount: 64, icon: "Code2" },
-  { id: "c2", slug: "programming", name: "Programming", blurb: "Languages and fundamentals", courseCount: 52, icon: "Terminal" },
-  { id: "c3", slug: "data-science", name: "Data Science", blurb: "Statistics, Python, ML", courseCount: 41, icon: "LineChart" },
-  { id: "c4", slug: "design", name: "UI / UX Design", blurb: "Research to design systems", courseCount: 38, icon: "PenTool" },
-  { id: "c5", slug: "business", name: "Business", blurb: "Strategy and leadership", courseCount: 33, icon: "Briefcase" },
-  { id: "c6", slug: "marketing", name: "Marketing", blurb: "Growth and analytics", courseCount: 27, icon: "Megaphone" },
-  { id: "c7", slug: "cybersecurity", name: "Cybersecurity", blurb: "Defence and offence", courseCount: 29, icon: "ShieldCheck" },
-  { id: "c8", slug: "mobile", name: "Mobile Development", blurb: "iOS, Android, React Native", courseCount: 24, icon: "Smartphone" },
+  {
+    id: "c1",
+    slug: "web-development",
+    name: "Web Development",
+    blurb: "Frontend to full-stack",
+    courseCount: 64,
+    icon: "Code2",
+  },
+  {
+    id: "c2",
+    slug: "programming",
+    name: "Programming",
+    blurb: "Languages and fundamentals",
+    courseCount: 52,
+    icon: "Terminal",
+  },
+  {
+    id: "c3",
+    slug: "data-science",
+    name: "Data Science",
+    blurb: "Statistics, Python, ML",
+    courseCount: 41,
+    icon: "LineChart",
+  },
+  {
+    id: "c4",
+    slug: "design",
+    name: "UI / UX Design",
+    blurb: "Research to design systems",
+    courseCount: 38,
+    icon: "PenTool",
+  },
+  {
+    id: "c5",
+    slug: "business",
+    name: "Business",
+    blurb: "Strategy and leadership",
+    courseCount: 33,
+    icon: "Briefcase",
+  },
+  {
+    id: "c6",
+    slug: "marketing",
+    name: "Marketing",
+    blurb: "Growth and analytics",
+    courseCount: 27,
+    icon: "Megaphone",
+  },
+  {
+    id: "c7",
+    slug: "cybersecurity",
+    name: "Cybersecurity",
+    blurb: "Defence and offence",
+    courseCount: 29,
+    icon: "ShieldCheck",
+  },
+  {
+    id: "c8",
+    slug: "mobile",
+    name: "Mobile Development",
+    blurb: "iOS, Android, React Native",
+    courseCount: 24,
+    icon: "Smartphone",
+  },
 ];
 
 export const instructors: Instructor[] = [
@@ -191,7 +247,11 @@ export const instructors: Instructor[] = [
   },
 ];
 
-function section(id: string, title: string, lessons: [string, string, string, boolean?][]): CurriculumSection {
+function section(
+  id: string,
+  title: string,
+  lessons: [string, string, string, boolean?][],
+): CurriculumSection {
   return {
     id,
     title,
@@ -207,22 +267,56 @@ function section(id: string, title: string, lessons: [string, string, string, bo
 
 const reactCurriculum: CurriculumSection[] = [
   section("s1", "Section 1 — Introduction", [
-    ["Welcome to the course", "4:12", "How the course is structured and what you will build across the eight modules.", true],
-    ["Course roadmap", "6:40", "A tour of the three projects and the skills each one exercises.", true],
-    ["Setting up the environment", "11:05", "Node, package manager, editor configuration and the starter repository."],
+    [
+      "Welcome to the course",
+      "4:12",
+      "How the course is structured and what you will build across the eight modules.",
+      true,
+    ],
+    [
+      "Course roadmap",
+      "6:40",
+      "A tour of the three projects and the skills each one exercises.",
+      true,
+    ],
+    [
+      "Setting up the environment",
+      "11:05",
+      "Node, package manager, editor configuration and the starter repository.",
+    ],
   ]),
   section("s2", "Section 2 — Fundamentals", [
-    ["Components and props in depth", "18:22", "Composition patterns, prop drilling and when to reach for context."],
-    ["State, effects and the render cycle", "24:10", "A precise mental model of when React re-renders and why."],
-    ["Typing components with TypeScript", "21:35", "Generics, discriminated unions and prop inference for reusable components."],
+    [
+      "Components and props in depth",
+      "18:22",
+      "Composition patterns, prop drilling and when to reach for context.",
+    ],
+    [
+      "State, effects and the render cycle",
+      "24:10",
+      "A precise mental model of when React re-renders and why.",
+    ],
+    [
+      "Typing components with TypeScript",
+      "21:35",
+      "Generics, discriminated unions and prop inference for reusable components.",
+    ],
   ]),
   section("s3", "Section 3 — Data and Routing", [
-    ["Client caching with TanStack Query", "26:48", "Query keys, invalidation and optimistic updates."],
+    [
+      "Client caching with TanStack Query",
+      "26:48",
+      "Query keys, invalidation and optimistic updates.",
+    ],
     ["File-based routing patterns", "19:14", "Layouts, loaders and route-level data contracts."],
     ["Forms and validation", "22:02", "Schema-driven forms with accessible error handling."],
   ]),
   section("s4", "Section 4 — Advanced Concepts", [
-    ["Rendering performance", "28:31", "Profiling, memoisation trade-offs and list virtualisation."],
+    [
+      "Rendering performance",
+      "28:31",
+      "Profiling, memoisation trade-offs and list virtualisation.",
+    ],
     ["Design system integration", "17:55", "Tokens, variants and keeping components on-brand."],
     ["Capstone project", "42:18", "Ship a production-grade dashboard end to end."],
   ]),
@@ -236,8 +330,16 @@ const genericCurriculum = (topic: string): CurriculumSection[] => [
   ]),
   section("s2", "Section 2 — Core Foundations", [
     ["The core concepts", "22:17", "The vocabulary and models the rest of the course builds on."],
-    ["Working through your first example", "25:03", "A guided walkthrough with commentary on each decision."],
-    ["Common mistakes and how to avoid them", "16:38", "Failure modes seen repeatedly in real teams."],
+    [
+      "Working through your first example",
+      "25:03",
+      "A guided walkthrough with commentary on each decision.",
+    ],
+    [
+      "Common mistakes and how to avoid them",
+      "16:38",
+      "Failure modes seen repeatedly in real teams.",
+    ],
   ]),
   section("s3", "Section 3 — Applied Practice", [
     ["Case study: a real engagement", "29:51", "An anonymised project from start to delivery."],
@@ -254,7 +356,8 @@ export const courses: Course[] = [
   {
     id: "modern-react-typescript",
     title: "Modern React & TypeScript",
-    subtitle: "Build production interfaces with confident types, clean state and measurable performance.",
+    subtitle:
+      "Build production interfaces with confident types, clean state and measurable performance.",
     categorySlug: "web-development",
     category: "Web Development",
     instructorId: "i1",
@@ -357,7 +460,11 @@ export const courses: Course[] = [
       "Measure adoption across product teams",
       "Version and migrate breaking changes safely",
     ],
-    requirements: ["Familiarity with Figma", "Basic understanding of CSS", "No coding experience required"],
+    requirements: [
+      "Familiarity with Figma",
+      "Basic understanding of CSS",
+      "No coding experience required",
+    ],
     curriculum: genericCurriculum("design systems"),
     accent: "from-gold/25",
   },
@@ -391,7 +498,11 @@ export const courses: Course[] = [
       "Write error contracts clients can program against",
       "Instrument and load-test a service",
     ],
-    requirements: ["Server-side experience in any language", "Comfort with HTTP basics", "A terminal"],
+    requirements: [
+      "Server-side experience in any language",
+      "Comfort with HTTP basics",
+      "A terminal",
+    ],
     curriculum: genericCurriculum("API design"),
     accent: "from-brand-soft/25",
   },
@@ -425,7 +536,11 @@ export const courses: Course[] = [
       "Build a workable incident response runbook",
       "Prioritise findings by real business risk",
     ],
-    requirements: ["Cloud platform experience (AWS, GCP or Azure)", "Basic Linux and networking", "Comfort reading code"],
+    requirements: [
+      "Cloud platform experience (AWS, GCP or Azure)",
+      "Basic Linux and networking",
+      "Comfort reading code",
+    ],
     curriculum: genericCurriculum("cloud security"),
     accent: "from-destructive/20",
   },
@@ -459,7 +574,11 @@ export const courses: Course[] = [
       "Run a quarterly growth review that changes decisions",
       "Brief a team or agency without ambiguity",
     ],
-    requirements: ["Some exposure to marketing or product", "Spreadsheet comfort", "No technical background needed"],
+    requirements: [
+      "Some exposure to marketing or product",
+      "Spreadsheet comfort",
+      "No technical background needed",
+    ],
     curriculum: genericCurriculum("B2B growth"),
     accent: "from-warn/20",
   },
@@ -493,7 +612,11 @@ export const courses: Course[] = [
       "Prepare builds for both app stores",
       "Debug performance on real devices",
     ],
-    requirements: ["JavaScript fundamentals", "A Mac or Windows machine", "Optional: a physical device for testing"],
+    requirements: [
+      "JavaScript fundamentals",
+      "A Mac or Windows machine",
+      "Optional: a physical device for testing",
+    ],
     curriculum: genericCurriculum("React Native"),
     accent: "from-brand/25",
   },
@@ -594,7 +717,11 @@ export const courses: Course[] = [
       "Design safe rollout and rollback strategies",
       "Cost-model an inference workload",
     ],
-    requirements: ["Comfortable training models in Python", "Basic Docker knowledge", "Some cloud exposure"],
+    requirements: [
+      "Comfortable training models in Python",
+      "Basic Docker knowledge",
+      "Some cloud exposure",
+    ],
     curriculum: genericCurriculum("production ML"),
     accent: "from-good/20",
   },
@@ -749,18 +876,126 @@ export interface PlatformUser {
 }
 
 export const users: PlatformUser[] = [
-  { id: "u1", name: "Alex Mercer", initials: "AM", email: "alex.mercer@example.com", role: "student", status: "Active", joined: "14 Jan 2026", enrollments: 6 },
-  { id: "u2", name: "Elena Vasquez", initials: "EV", email: "elena.vasquez@example.com", role: "instructor", status: "Active", joined: "2 Mar 2024", enrollments: 0 },
-  { id: "u3", name: "Hannah Reid", initials: "HR", email: "hannah.reid@example.com", role: "student", status: "Active", joined: "21 Feb 2026", enrollments: 3 },
-  { id: "u4", name: "Dr. Amara Nwosu", initials: "AN", email: "amara.nwosu@example.com", role: "instructor", status: "Active", joined: "9 Sep 2024", enrollments: 0 },
-  { id: "u5", name: "Daniel Okoro", initials: "DO", email: "daniel.okoro@example.com", role: "student", status: "Active", joined: "4 Apr 2026", enrollments: 8 },
-  { id: "u6", name: "Marcus Lindqvist", initials: "ML", email: "marcus.l@example.com", role: "instructor", status: "Active", joined: "17 Nov 2024", enrollments: 0 },
-  { id: "u7", name: "Sofia Bergman", initials: "SB", email: "sofia.bergman@example.com", role: "instructor", status: "Pending", joined: "28 Aug 2026", enrollments: 0 },
-  { id: "u8", name: "Luis Moreau", initials: "LM", email: "luis.moreau@example.com", role: "student", status: "Suspended", joined: "12 May 2026", enrollments: 2 },
-  { id: "u9", name: "Aisha Karim", initials: "AK", email: "aisha.karim@example.com", role: "student", status: "Active", joined: "30 Jun 2026", enrollments: 5 },
-  { id: "u10", name: "Nina Halvorsen", initials: "NH", email: "nina.h@example.com", role: "admin", status: "Active", joined: "1 Jan 2024", enrollments: 0 },
-  { id: "u11", name: "Tomas Herrera", initials: "TH", email: "tomas.herrera@example.com", role: "instructor", status: "Active", joined: "5 Jul 2025", enrollments: 0 },
-  { id: "u12", name: "Grace Whitfield", initials: "GW", email: "grace.w@example.com", role: "student", status: "Active", joined: "18 Aug 2026", enrollments: 4 },
+  {
+    id: "u1",
+    name: "Alex Mercer",
+    initials: "AM",
+    email: "alex.mercer@example.com",
+    role: "student",
+    status: "Active",
+    joined: "14 Jan 2026",
+    enrollments: 6,
+  },
+  {
+    id: "u2",
+    name: "Elena Vasquez",
+    initials: "EV",
+    email: "elena.vasquez@example.com",
+    role: "instructor",
+    status: "Active",
+    joined: "2 Mar 2024",
+    enrollments: 0,
+  },
+  {
+    id: "u3",
+    name: "Hannah Reid",
+    initials: "HR",
+    email: "hannah.reid@example.com",
+    role: "student",
+    status: "Active",
+    joined: "21 Feb 2026",
+    enrollments: 3,
+  },
+  {
+    id: "u4",
+    name: "Dr. Amara Nwosu",
+    initials: "AN",
+    email: "amara.nwosu@example.com",
+    role: "instructor",
+    status: "Active",
+    joined: "9 Sep 2024",
+    enrollments: 0,
+  },
+  {
+    id: "u5",
+    name: "Daniel Okoro",
+    initials: "DO",
+    email: "daniel.okoro@example.com",
+    role: "student",
+    status: "Active",
+    joined: "4 Apr 2026",
+    enrollments: 8,
+  },
+  {
+    id: "u6",
+    name: "Marcus Lindqvist",
+    initials: "ML",
+    email: "marcus.l@example.com",
+    role: "instructor",
+    status: "Active",
+    joined: "17 Nov 2024",
+    enrollments: 0,
+  },
+  {
+    id: "u7",
+    name: "Sofia Bergman",
+    initials: "SB",
+    email: "sofia.bergman@example.com",
+    role: "instructor",
+    status: "Pending",
+    joined: "28 Aug 2026",
+    enrollments: 0,
+  },
+  {
+    id: "u8",
+    name: "Luis Moreau",
+    initials: "LM",
+    email: "luis.moreau@example.com",
+    role: "student",
+    status: "Suspended",
+    joined: "12 May 2026",
+    enrollments: 2,
+  },
+  {
+    id: "u9",
+    name: "Aisha Karim",
+    initials: "AK",
+    email: "aisha.karim@example.com",
+    role: "student",
+    status: "Active",
+    joined: "30 Jun 2026",
+    enrollments: 5,
+  },
+  {
+    id: "u10",
+    name: "Nina Halvorsen",
+    initials: "NH",
+    email: "nina.h@example.com",
+    role: "admin",
+    status: "Active",
+    joined: "1 Jan 2024",
+    enrollments: 0,
+  },
+  {
+    id: "u11",
+    name: "Tomas Herrera",
+    initials: "TH",
+    email: "tomas.herrera@example.com",
+    role: "instructor",
+    status: "Active",
+    joined: "5 Jul 2025",
+    enrollments: 0,
+  },
+  {
+    id: "u12",
+    name: "Grace Whitfield",
+    initials: "GW",
+    email: "grace.w@example.com",
+    role: "student",
+    status: "Active",
+    joined: "18 Aug 2026",
+    enrollments: 4,
+  },
 ];
 
 export interface Enrollment {
@@ -776,12 +1011,72 @@ export interface Enrollment {
 }
 
 export const enrollments: Enrollment[] = [
-  { id: "e1", courseId: "modern-react-typescript", title: "Modern React & TypeScript", instructor: "Elena Vasquez", progress: 67, lastLesson: "Rendering performance", enrolledOn: "2 Jul 2026", student: "Alex Mercer", amount: 49 },
-  { id: "e2", courseId: "statistical-thinking", title: "Statistical Thinking & Inference", instructor: "Dr. Amara Nwosu", progress: 62, lastLesson: "Designing an experiment", enrolledOn: "18 Jun 2026", student: "Alex Mercer", amount: 59 },
-  { id: "e3", courseId: "api-design-in-practice", title: "API Design in Practice", instructor: "Priya Nair", progress: 24, lastLesson: "Pagination strategies", enrolledOn: "11 Aug 2026", student: "Alex Mercer", amount: 54 },
-  { id: "e4", courseId: "design-systems-that-scale", title: "Design Systems That Scale", instructor: "Marcus Lindqvist", progress: 100, lastLesson: "Course complete", enrolledOn: "3 Mar 2026", student: "Alex Mercer", amount: 39 },
-  { id: "e5", courseId: "typography-for-interfaces", title: "Typography for Interfaces", instructor: "Marcus Lindqvist", progress: 100, lastLesson: "Course complete", enrolledOn: "22 Feb 2026", student: "Alex Mercer", amount: 34 },
-  { id: "e6", courseId: "python-fundamentals", title: "Python Fundamentals, Properly", instructor: "Priya Nair", progress: 41, lastLesson: "Iteration protocols", enrolledOn: "9 Aug 2026", student: "Alex Mercer", amount: 32 },
+  {
+    id: "e1",
+    courseId: "modern-react-typescript",
+    title: "Modern React & TypeScript",
+    instructor: "Elena Vasquez",
+    progress: 67,
+    lastLesson: "Rendering performance",
+    enrolledOn: "2 Jul 2026",
+    student: "Alex Mercer",
+    amount: 49,
+  },
+  {
+    id: "e2",
+    courseId: "statistical-thinking",
+    title: "Statistical Thinking & Inference",
+    instructor: "Dr. Amara Nwosu",
+    progress: 62,
+    lastLesson: "Designing an experiment",
+    enrolledOn: "18 Jun 2026",
+    student: "Alex Mercer",
+    amount: 59,
+  },
+  {
+    id: "e3",
+    courseId: "api-design-in-practice",
+    title: "API Design in Practice",
+    instructor: "Priya Nair",
+    progress: 24,
+    lastLesson: "Pagination strategies",
+    enrolledOn: "11 Aug 2026",
+    student: "Alex Mercer",
+    amount: 54,
+  },
+  {
+    id: "e4",
+    courseId: "design-systems-that-scale",
+    title: "Design Systems That Scale",
+    instructor: "Marcus Lindqvist",
+    progress: 100,
+    lastLesson: "Course complete",
+    enrolledOn: "3 Mar 2026",
+    student: "Alex Mercer",
+    amount: 39,
+  },
+  {
+    id: "e5",
+    courseId: "typography-for-interfaces",
+    title: "Typography for Interfaces",
+    instructor: "Marcus Lindqvist",
+    progress: 100,
+    lastLesson: "Course complete",
+    enrolledOn: "22 Feb 2026",
+    student: "Alex Mercer",
+    amount: 34,
+  },
+  {
+    id: "e6",
+    courseId: "python-fundamentals",
+    title: "Python Fundamentals, Properly",
+    instructor: "Priya Nair",
+    progress: 41,
+    lastLesson: "Iteration protocols",
+    enrolledOn: "9 Aug 2026",
+    student: "Alex Mercer",
+    amount: 32,
+  },
 ];
 
 export interface Certificate {
@@ -795,9 +1090,33 @@ export interface Certificate {
 }
 
 export const certificates: Certificate[] = [
-  { id: "cert1", title: "Certificate of Completion", course: "Design Systems That Scale", issued: "14 Jun 2026", credentialId: "LN-DS-2026-04821", student: "Alex Mercer", hours: 10 },
-  { id: "cert2", title: "Certificate of Completion", course: "Typography for Interfaces", issued: "2 Apr 2026", credentialId: "LN-TY-2026-02194", student: "Alex Mercer", hours: 6 },
-  { id: "cert3", title: "Certificate of Completion", course: "Product Strategy Essentials", issued: "27 Jan 2026", credentialId: "LN-PS-2026-00713", student: "Hannah Reid", hours: 7 },
+  {
+    id: "cert1",
+    title: "Certificate of Completion",
+    course: "Design Systems That Scale",
+    issued: "14 Jun 2026",
+    credentialId: "LN-DS-2026-04821",
+    student: "Alex Mercer",
+    hours: 10,
+  },
+  {
+    id: "cert2",
+    title: "Certificate of Completion",
+    course: "Typography for Interfaces",
+    issued: "2 Apr 2026",
+    credentialId: "LN-TY-2026-02194",
+    student: "Alex Mercer",
+    hours: 6,
+  },
+  {
+    id: "cert3",
+    title: "Certificate of Completion",
+    course: "Product Strategy Essentials",
+    issued: "27 Jan 2026",
+    credentialId: "LN-PS-2026-00713",
+    student: "Hannah Reid",
+    hours: 7,
+  },
 ];
 
 export interface NotificationItemData {
@@ -810,11 +1129,46 @@ export interface NotificationItemData {
 }
 
 export const notifications: NotificationItemData[] = [
-  { id: "n1", title: "New lesson published", body: "Elena Vasquez added \"Server components in depth\" to Modern React & TypeScript.", time: "24 minutes ago", kind: "course", unread: true },
-  { id: "n2", title: "Marcus replied to your question", body: "\"Good catch — the token naming changed in v3. Here's the migration note…\"", time: "2 hours ago", kind: "message", unread: true },
-  { id: "n3", title: "Certificate issued", body: "Your certificate for Design Systems That Scale is ready to download.", time: "Yesterday", kind: "achievement", unread: false },
-  { id: "n4", title: "Weekly goal reached", body: "You studied 10 hours this week — your longest streak so far.", time: "2 days ago", kind: "achievement", unread: false },
-  { id: "n5", title: "Price drop on your wishlist", body: "Applied Cloud Security is now $69, down from $99.", time: "4 days ago", kind: "system", unread: false },
+  {
+    id: "n1",
+    title: "New lesson published",
+    body: 'Elena Vasquez added "Server components in depth" to Modern React & TypeScript.',
+    time: "24 minutes ago",
+    kind: "course",
+    unread: true,
+  },
+  {
+    id: "n2",
+    title: "Marcus replied to your question",
+    body: '"Good catch — the token naming changed in v3. Here\'s the migration note…"',
+    time: "2 hours ago",
+    kind: "message",
+    unread: true,
+  },
+  {
+    id: "n3",
+    title: "Certificate issued",
+    body: "Your certificate for Design Systems That Scale is ready to download.",
+    time: "Yesterday",
+    kind: "achievement",
+    unread: false,
+  },
+  {
+    id: "n4",
+    title: "Weekly goal reached",
+    body: "You studied 10 hours this week — your longest streak so far.",
+    time: "2 days ago",
+    kind: "achievement",
+    unread: false,
+  },
+  {
+    id: "n5",
+    title: "Price drop on your wishlist",
+    body: "Applied Cloud Security is now $69, down from $99.",
+    time: "4 days ago",
+    kind: "system",
+    unread: false,
+  },
 ];
 
 export interface Conversation {
@@ -838,9 +1192,24 @@ export const conversations: Conversation[] = [
     time: "10:24",
     unread: 2,
     messages: [
-      { id: "m1", from: "me", body: "Quick question on section 4 — I wrapped my list rows in memo but the profiler still shows re-renders.", time: "09:58" },
-      { id: "m2", from: "them", body: "That's expected — memoisation only helps when the props are referentially stable. Your row is probably receiving a new callback each render.", time: "10:22" },
-      { id: "m3", from: "them", body: "Try hoisting the handler with useCallback and passing the row id as a data attribute instead. There's a worked example in the lesson repo under /examples/stable-rows.", time: "10:24" },
+      {
+        id: "m1",
+        from: "me",
+        body: "Quick question on section 4 — I wrapped my list rows in memo but the profiler still shows re-renders.",
+        time: "09:58",
+      },
+      {
+        id: "m2",
+        from: "them",
+        body: "That's expected — memoisation only helps when the props are referentially stable. Your row is probably receiving a new callback each render.",
+        time: "10:22",
+      },
+      {
+        id: "m3",
+        from: "them",
+        body: "Try hoisting the handler with useCallback and passing the row id as a data attribute instead. There's a worked example in the lesson repo under /examples/stable-rows.",
+        time: "10:24",
+      },
     ],
   },
   {
@@ -852,9 +1221,24 @@ export const conversations: Conversation[] = [
     time: "Yesterday",
     unread: 0,
     messages: [
-      { id: "m1", from: "them", body: "Nice work on the capstone submission — your naming is consistent, which is the hard part.", time: "16:02" },
-      { id: "m2", from: "me", body: "Thanks! I'm still unsure whether semantic tokens should reference primitives directly.", time: "16:40" },
-      { id: "m3", from: "them", body: "Happy to review your token file if you share it.", time: "16:44" },
+      {
+        id: "m1",
+        from: "them",
+        body: "Nice work on the capstone submission — your naming is consistent, which is the hard part.",
+        time: "16:02",
+      },
+      {
+        id: "m2",
+        from: "me",
+        body: "Thanks! I'm still unsure whether semantic tokens should reference primitives directly.",
+        time: "16:40",
+      },
+      {
+        id: "m3",
+        from: "them",
+        body: "Happy to review your token file if you share it.",
+        time: "16:44",
+      },
     ],
   },
   {
@@ -865,7 +1249,14 @@ export const conversations: Conversation[] = [
     preview: "Your invoice for August is available.",
     time: "28 Aug",
     unread: 0,
-    messages: [{ id: "m1", from: "them", body: "Your invoice for August is available in Settings → Billing.", time: "11:15" }],
+    messages: [
+      {
+        id: "m1",
+        from: "them",
+        body: "Your invoice for August is available in Settings → Billing.",
+        time: "11:15",
+      },
+    ],
   },
 ];
 
@@ -880,12 +1271,60 @@ export interface Payment {
 }
 
 export const payments: Payment[] = [
-  { id: "TX-20481", date: "1 Sep 2026", student: "Grace Whitfield", course: "Modern React & TypeScript", method: "Visa •••• 4242", amount: 49, status: "Completed" },
-  { id: "TX-20477", date: "31 Aug 2026", student: "Aisha Karim", course: "API Design in Practice", method: "Mastercard •••• 8891", amount: 54, status: "Completed" },
-  { id: "TX-20470", date: "30 Aug 2026", student: "Daniel Okoro", course: "Statistical Thinking & Inference", method: "PayPal", amount: 59, status: "Completed" },
-  { id: "TX-20462", date: "29 Aug 2026", student: "Luis Moreau", course: "Design Systems That Scale", method: "Visa •••• 1104", amount: 39, status: "Refunded" },
-  { id: "TX-20455", date: "28 Aug 2026", student: "Hannah Reid", course: "Python Fundamentals, Properly", method: "Visa •••• 7720", amount: 32, status: "Completed" },
-  { id: "TX-20448", date: "27 Aug 2026", student: "Alex Mercer", course: "Applied Cloud Security", method: "Amex •••• 3009", amount: 69, status: "Pending" },
+  {
+    id: "TX-20481",
+    date: "1 Sep 2026",
+    student: "Grace Whitfield",
+    course: "Modern React & TypeScript",
+    method: "Visa •••• 4242",
+    amount: 49,
+    status: "Completed",
+  },
+  {
+    id: "TX-20477",
+    date: "31 Aug 2026",
+    student: "Aisha Karim",
+    course: "API Design in Practice",
+    method: "Mastercard •••• 8891",
+    amount: 54,
+    status: "Completed",
+  },
+  {
+    id: "TX-20470",
+    date: "30 Aug 2026",
+    student: "Daniel Okoro",
+    course: "Statistical Thinking & Inference",
+    method: "PayPal",
+    amount: 59,
+    status: "Completed",
+  },
+  {
+    id: "TX-20462",
+    date: "29 Aug 2026",
+    student: "Luis Moreau",
+    course: "Design Systems That Scale",
+    method: "Visa •••• 1104",
+    amount: 39,
+    status: "Refunded",
+  },
+  {
+    id: "TX-20455",
+    date: "28 Aug 2026",
+    student: "Hannah Reid",
+    course: "Python Fundamentals, Properly",
+    method: "Visa •••• 7720",
+    amount: 32,
+    status: "Completed",
+  },
+  {
+    id: "TX-20448",
+    date: "27 Aug 2026",
+    student: "Alex Mercer",
+    course: "Applied Cloud Security",
+    method: "Amex •••• 3009",
+    amount: 69,
+    status: "Pending",
+  },
 ];
 
 export interface Coupon {
@@ -900,11 +1339,56 @@ export interface Coupon {
 }
 
 export const coupons: Coupon[] = [
-  { id: "cp1", code: "AUTUMN30", discount: "30%", applies: "All courses", uses: 412, limit: 1000, expires: "30 Sep 2026", status: "Active" },
-  { id: "cp2", code: "DATA20", discount: "20%", applies: "Data Science", uses: 188, limit: 500, expires: "15 Oct 2026", status: "Active" },
-  { id: "cp3", code: "WELCOME10", discount: "$10", applies: "First purchase", uses: 2841, limit: 5000, expires: "31 Dec 2026", status: "Active" },
-  { id: "cp4", code: "WINTER40", discount: "40%", applies: "All courses", uses: 0, limit: 800, expires: "1 Dec 2026", status: "Scheduled" },
-  { id: "cp5", code: "SPRING25", discount: "25%", applies: "Design", uses: 634, limit: 700, expires: "31 May 2026", status: "Expired" },
+  {
+    id: "cp1",
+    code: "AUTUMN30",
+    discount: "30%",
+    applies: "All courses",
+    uses: 412,
+    limit: 1000,
+    expires: "30 Sep 2026",
+    status: "Active",
+  },
+  {
+    id: "cp2",
+    code: "DATA20",
+    discount: "20%",
+    applies: "Data Science",
+    uses: 188,
+    limit: 500,
+    expires: "15 Oct 2026",
+    status: "Active",
+  },
+  {
+    id: "cp3",
+    code: "WELCOME10",
+    discount: "$10",
+    applies: "First purchase",
+    uses: 2841,
+    limit: 5000,
+    expires: "31 Dec 2026",
+    status: "Active",
+  },
+  {
+    id: "cp4",
+    code: "WINTER40",
+    discount: "40%",
+    applies: "All courses",
+    uses: 0,
+    limit: 800,
+    expires: "1 Dec 2026",
+    status: "Scheduled",
+  },
+  {
+    id: "cp5",
+    code: "SPRING25",
+    discount: "25%",
+    applies: "Design",
+    uses: 634,
+    limit: 700,
+    expires: "31 May 2026",
+    status: "Expired",
+  },
 ];
 
 export const revenueByMonth = [
@@ -918,14 +1402,26 @@ export const revenueByMonth = [
 ];
 
 export const activity = [
-  { id: "a1", text: "Completed \"Rendering performance\" in Modern React & TypeScript", time: "1 hour ago" },
+  {
+    id: "a1",
+    text: 'Completed "Rendering performance" in Modern React & TypeScript',
+    time: "1 hour ago",
+  },
   { id: "a2", text: "Earned a certificate for Design Systems That Scale", time: "Yesterday" },
-  { id: "a3", text: "Started \"Pagination strategies\" in API Design in Practice", time: "2 days ago" },
+  {
+    id: "a3",
+    text: 'Started "Pagination strategies" in API Design in Practice',
+    time: "2 days ago",
+  },
   { id: "a4", text: "Added Applied Cloud Security to your wishlist", time: "4 days ago" },
   { id: "a5", text: "Posted a question in Statistical Thinking & Inference", time: "5 days ago" },
 ];
 
-export const wishlistIds = ["applied-cloud-security", "machine-learning-in-production", "positioning-and-growth"];
+export const wishlistIds = [
+  "applied-cloud-security",
+  "machine-learning-in-production",
+  "positioning-and-growth",
+];
 
 export const platformStats = {
   students: 10248,

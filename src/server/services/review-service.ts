@@ -7,6 +7,7 @@ import * as courseRepository from "../repositories/course-repository";
 import { isEnrollmentEntitled } from "./enrollment-policy";
 import type { SafeUser } from "../auth/types";
 import type { ReviewDTO, MyReviewStateDTO } from "../dto/review";
+import { enforceRateLimit } from "../auth/rate-limit";
 import { reviewInputSchema } from "../validation/review";
 
 export type RatingBreakdown = { stars: number; pct: number };
@@ -118,6 +119,7 @@ export async function createCourseReview(
   input: unknown,
 ): Promise<ReviewDTO> {
   const data = reviewInputSchema.parse(input);
+  await enforceRateLimit(`review:${user.id}`, 30, 60 * 60 * 1000);
 
   const course = await courseRepository.findCourseBySlugForLearning(courseSlug);
   if (!course || course.status !== "PUBLISHED") throw new CourseNotAvailableForReviewError();
@@ -148,6 +150,7 @@ export async function updateCourseReview(
   input: unknown,
 ): Promise<ReviewDTO> {
   const data = reviewInputSchema.parse(input);
+  await enforceRateLimit(`review:${user.id}`, 30, 60 * 60 * 1000);
 
   const review = await reviewRepository.findReviewById(reviewId);
   // Same "not found" for missing vs. not-yours — never confirm another
@@ -162,6 +165,7 @@ export async function updateCourseReview(
 }
 
 export async function deleteCourseReview(user: SafeUser, reviewId: string): Promise<void> {
+  await enforceRateLimit(`review:${user.id}`, 30, 60 * 60 * 1000);
   const review = await reviewRepository.findReviewById(reviewId);
   if (!review || review.userId !== user.id) throw new ReviewNotFoundError();
   await reviewRepository.deleteReview(reviewId);

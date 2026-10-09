@@ -23,7 +23,7 @@ export async function changeMyPassword(
   user: SafeUser,
   input: unknown,
 ): Promise<{ message: string }> {
-  enforceRateLimit(`change-password:${user.id}`, 5, 15 * 60 * 1000);
+  await enforceRateLimit(`change-password:${user.id}`, 5, 15 * 60 * 1000);
 
   const data = changePasswordSchema.parse(input);
 
